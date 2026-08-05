@@ -633,7 +633,7 @@ the `hf3 -d` developer option on all HiFiRe3 calls.
 
 Some users may only be interested in using HiFiRe3 pipelines
 as a standalone program, e.g., if HiFiRe3 actions are to be
-incorporated into a pre-existing workflow managment system.
+incorporated into a pre-existing workflow management system.
 HiFiRe3 pipeline containers support this installation-free usage.
 
 Importantly, running pipelines via a direct call to a container,
