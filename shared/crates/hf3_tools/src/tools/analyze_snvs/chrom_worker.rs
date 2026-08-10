@@ -127,13 +127,11 @@ pub fn process_chrom(
             chrom_file_prefix, &chrom_index_padded
         );
         let variant_metadata = VariantsTally::write_sorted(
-            tool, 
-            &mut worker,
+            tool, &mut worker, &mut haplotype_consensuses,
             variants_file_path
         );
         let variant_reads_metadata = VariantReadsTally::write_sorted(
-            tool, 
-            &mut worker,
+            tool, &mut worker,
             variant_reads_file_path
         );
         let reads_on_reference_metadata = FragmentHaplotypes::write_sorted(

@@ -649,8 +649,8 @@ You do not need to clone or install this repository, simply download the relevan
 container image from:
 - <https://github.com/wilsontelab/HiFiRe3/pkgs/container/hifire3> 
 
-e.g., using command:
-- `singularity pull oras://ghcr.io/wilsontelab/hifire3:latest`
+e.g., using command (update vX.X to an actual version, e.g., v0.5):
+- `singularity pull oras://ghcr.io/wilsontelab/hifire3:vX.X`
 
 ### Use the container with directory bind mounts and direct action calls
 

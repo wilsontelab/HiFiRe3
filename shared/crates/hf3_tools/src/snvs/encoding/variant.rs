@@ -83,6 +83,8 @@ struct VariantRecord<'a> {
     chrom_index:       ChromIndex1,
     variant:           &'a Variant, // specific variant observed at this position
     n_repeat_bases:    u32,
+    context_base_left: UppercaseACGTN,
+    context_base_right:UppercaseACGTN,
     n_matching_reads:  u16,
     n_haplotype_reads: u16,
     n_reads:           u16,
@@ -133,7 +135,7 @@ impl VariantsTally {
             instances.qnames.push(read.qname.clone());
         }
         self.clonal.insert(VariantLocation { 
-            tgt_pos0:    variant.tgt_pos0, 
+            ref_pos0:    variant.ref_pos0, 
             is_indel:    variant.is_indel, 
             re_fragment: variant.re_fragment, 
         });
@@ -169,6 +171,7 @@ impl VariantsTally {
     pub fn write_sorted(
         tool:   &SnvAnalysisTool,
         worker: &mut SnvChromWorker,
+        haplotype_consensuses: &mut HaplotypeConsensuses,
         file_path: String,
     ) -> VariantMetadata {
         let mut csv = OutputCsv::open_csv(
@@ -179,19 +182,45 @@ impl VariantsTally {
         );
         let mut variants = worker.variant_tally.tally.keys()
             .filter_map(|v|{
-                let excluded  =  tool.exclusions.pos_in_region(&worker.chrom, v.tgt_pos0 + 1);
+                let excluded  =  tool.exclusions.pos_in_region(&worker.chrom, v.ref_pos0 + 1);
                 let on_target = !tool.targets.has_data || 
-                                       tool.targets.pos_in_region(&worker.chrom, v.tgt_pos0 + 1);
+                                       tool.targets.pos_in_region(&worker.chrom, v.ref_pos0 + 1);
                 if !excluded && on_target { Some(v.clone()) } else { None }
             }).collect::<Vec<_>>();
         variants.sort_unstable();
         let mut md = VariantMetadata::new(variants.len());
         for variant in variants {
             let instances = &worker.variant_tally.tally[&variant];
+            let (context_base_left, context_base_right) = if instances.clonal == Clonality::Clonal {
+                ("NA".to_string(), "NA".to_string())
+            } else {
+                let (hap_seq, _) = haplotype_consensuses.cache
+                    .get_mut(&(variant.re_fragment, variant.haplotype))
+                    .expect("Failed to get haplotype seq from cache.");
+                let n_tgt_bases = variant.tgt_bases.as_ref().map_or(0, |s| s.len());
+                let (left_pos0, right_pos0) = if n_tgt_bases > 0 {
+                    (
+                        variant.tgt_pos0.saturating_sub(1) as usize,
+                        variant.tgt_pos0 as usize + n_tgt_bases
+                    )
+                } else {
+                    (
+                        variant.tgt_pos0 as usize,
+                        variant.tgt_pos0 as usize + 1                    
+                    )
+                };
+                let right_pos0 = right_pos0.min(hap_seq.len() - 1);
+                (
+                    hap_seq[left_pos0..=left_pos0].to_string(),
+                    hap_seq[right_pos0..=right_pos0].to_string()
+                )
+            };
             let record = VariantRecord {
                 chrom_index:   worker.chrom_index,
                 variant:       &variant,
                 n_repeat_bases: worker.simple_repeats.get_n_repeat_bases(&variant.re_fragment),
+                context_base_left,
+                context_base_right,
                 n_matching_reads:     instances.n_matching_reads,
                 n_haplotype_reads:    instances.n_haplotype_reads,
                 n_reads:              instances.n_reads,
@@ -206,7 +235,7 @@ impl VariantsTally {
                 clonal:        instances.clonal,
                 matches_clonal: if instances.clonal == Clonality::Clonal { 0 } else {
                     worker.variant_tally.clonal.contains(&VariantLocation { 
-                        tgt_pos0:    variant.tgt_pos0, 
+                        ref_pos0:    variant.ref_pos0, 
                         is_indel:    variant.is_indel, 
                         re_fragment: variant.re_fragment, // on either haplotype
                     }) as u8

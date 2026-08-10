@@ -92,6 +92,22 @@ summarizeLibrariesUI <- function(id, options) {
                 title = "VariantSummary Table",
                 width = 12, 
                 collapsible = TRUE, 
+                collapsed = TRUE
+            )
+        ),
+        fluidRow(
+            staticPlotBoxUI(
+                ns("sigFitWithoutNeighbor"),
+                "Signature Fit Without Neighbor Mutations",
+                width = 6, 
+                collapsible = TRUE, 
+                collapsed = FALSE
+            ),
+            staticPlotBoxUI(
+                ns("sigFitWithNeighbor"),
+                "Signature Fit With Neighbor Mutations",
+                width = 6, 
+                collapsible = TRUE, 
                 collapsed = FALSE
             )
         ),

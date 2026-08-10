@@ -294,6 +294,7 @@ hf3_getTrustworthySubclonalSnvs <- function(sourceId, subclonal_snvs, haplotypes
         permanent = TRUE,
         from = "ram",
         create = hf3_cached_create2,
+        # create = "once",
         createFn = function(...) {
             startSpinner(session, message = "loading trustworthy SNVs")
 
@@ -309,6 +310,7 @@ hf3_getTrustworthySubclonalSnvs <- function(sourceId, subclonal_snvs, haplotypes
                 all.y = FALSE, 
                 sort = TRUE
             )
+            subclonal_snvs[, sample := hf3_getSampleNames(sourceId, sample_bits, as_string = FALSE)]
 
             message(paste(nrow(subclonal_snvs), " = number of trustworthy single-sample subclonal SNVs"))
 
@@ -318,6 +320,21 @@ hf3_getTrustworthySubclonalSnvs <- function(sourceId, subclonal_snvs, haplotypes
                 tgt_bases %in% c("C", "T"), paste0(     tgt_bases,  ">",      alt_bases),
                 tgt_bases %in% c("A", "G"), paste0(comp[tgt_bases], ">", comp[alt_bases])
             )]
+            subclonal_snvs[, context := fcase(
+                is.na(context_base_left),       NA_character_,
+                grepl("N", context_base_left),  NA_character_,
+                grepl("N", context_base_right), NA_character_,
+                tgt_bases %in% c("C", "T"), paste0(
+                    context_base_left,      
+                    "[", mutation, "]",
+                    context_base_right
+                ),
+                tgt_bases %in% c("A", "G"), paste0(
+                    comp[context_base_right],
+                    "[", mutation, "]",
+                    comp[context_base_left]
+                )
+            )]
 
             print(
                 subclonal_snvs[, .N, keyby = .(tgt_bases, alt_bases)] %>% 
@@ -326,6 +343,10 @@ hf3_getTrustworthySubclonalSnvs <- function(sourceId, subclonal_snvs, haplotypes
             print(
                 subclonal_snvs[, .N, keyby = .(mutation, sample_bits)] %>% 
                 dcast(mutation ~ sample_bits, value.var = "N")
+            )
+            print(
+                subclonal_snvs[!is.na(context), .N, keyby = .(mutation, context, sample_bits)] %>% 
+                dcast(mutation + context ~ sample_bits, value.var = "N")
             )
 
             subclonal_snvs

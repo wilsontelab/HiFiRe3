@@ -123,11 +123,22 @@ called_haplotypes <- reactive({
     trustworthy_subclonal_snvs <- hf3_getTrustworthySubclonalSnvs(
         sourceId, valid_subclonal_snvs, trustworthy_haplotypes
     )
+    trustworthy_subclonal_snvs[, has_odd_one := context %in% c(
+        "A[C>A]C",
+        "G[C>G]C",
+        "A[T>A]T",
+        "T[T>A]A",
+        "G[T>G]T",
+        "T[T>G]G"
+    )]
 
     called_haplotypes <- merge(
         trustworthy_haplotypes,
         trustworthy_subclonal_snvs[, 
-            .(n_called_snvs = .N), 
+            .(
+                n_called_snvs = .N,
+                n_odd_calls = sum(has_odd_one)
+            ), 
             keyby = hf3_haplotype_cols
         ],
         all.x = TRUE,
@@ -147,6 +158,10 @@ called_haplotypes <- reactive({
             n_called_snvs = fcase(
                 is.na(n_called_snvs), 0L,
                 default = n_called_snvs
+            ),
+            n_odd_calls = fcase(
+                is.na(n_odd_calls), 0L,
+                default = n_odd_calls
             ),
             n_reads,
             n_valid_reads,
@@ -204,8 +219,8 @@ setFragment <- function(reads_on_ref){
     ]
     variants <- variants[
         chrom_index1 == reads_on_ref$chrom_index1 &
-        tgt_pos0 >= reads_on_ref$start0 &
-        tgt_pos0 <= reads_on_ref$end1
+        ref_pos0 >= reads_on_ref$start0 &
+        ref_pos0 <= reads_on_ref$end1
     ]
     stopSpinner(session)
     fragment(
@@ -502,11 +517,29 @@ variantsTableData <- reactive({
     if (!input$tableShowIndels) {
         fragment$variants <- fragment$variants[is_indel == 0]
     }
+    comp <- c("A" = "T", "C" = "G", "G" = "C", "T" = "A")
+    fragment$variants[, context := fcase(
+        is_indel == TRUE,               NA_character_,
+        is.na(context_base_left),       NA_character_,
+        grepl("N", context_base_left),  NA_character_,
+        grepl("N", context_base_right), NA_character_,
+        tgt_bases %in% c("C", "T"), paste0(
+            context_base_left,      
+            "[", paste0(     tgt_bases,  ">",      alt_bases), "]",
+            context_base_right
+        ),
+        tgt_bases %in% c("A", "G"), paste0(
+            comp[context_base_right],
+            "[", paste0(comp[tgt_bases], ">", comp[alt_bases]), "]",
+            comp[context_base_left]
+        )
+    )]
     variants <- fragment$variants[, 
         .(
-            pos = tgt_pos0 + 1,
+            pos = ref_pos0 + 1,
             tgt_bases = tgt_bases,
             alt_bases = alt_bases,
+            context = context,
             is_indel = is_indel,
             haplotype = haplotype,
             count = n_matching_reads,

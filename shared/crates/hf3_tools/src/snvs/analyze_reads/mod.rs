@@ -102,7 +102,7 @@ impl SnvChromWorker {
                 if let Some(alt_bases) = &variant.alt_bases {
                     let n_alt_bases = alt_bases.len();
                     reads.iter().enumerate().for_each(|(read_i, read)|{
-                        let map_pos0 = variant.tgt_pos0.saturating_sub(read.aln_start0) as usize;
+                        let map_pos0 = variant.ref_pos0.saturating_sub(read.aln_start0) as usize;
                         if let Some(read_pos0) = ref_pos_maps[read_i].get(map_pos0) {
                             let read_pos0 = if variant.tgt_bases.is_none() {
                                 *read_pos0 + 1

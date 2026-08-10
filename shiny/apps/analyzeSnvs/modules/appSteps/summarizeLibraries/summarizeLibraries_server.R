@@ -292,6 +292,147 @@ variantSummaryTable <- bufferedTableServer(
 )
 
 #----------------------------------------------------------------------
+# mutation signature modeling
+#----------------------------------------------------------------------
+sigFitShared <- reactive({
+    sourceId <- req(sourceId())
+
+    startSpinner(session, message = "loading mut sig data")
+    valid_subclonal_snvs <- hf3_getValidSubclonalSnvs(sourceId)
+    valid_haplotypes <- hf3_getValidHaplotypes(sourceId)
+    trustworthy_haplotypes <- hf3_getTrustworthyHaplotypes(
+        sourceId, valid_subclonal_snvs, valid_haplotypes
+    )
+    trustworthy_subclonal_snvs <- hf3_getTrustworthySubclonalSnvs(
+        sourceId, valid_subclonal_snvs, trustworthy_haplotypes
+    )
+
+    startSpinner(session, message = "casting mutation contexts")
+    trustworthy_subclonal_snvs[, sample := paste0("smp_", sample_bits)]
+    mutation_counts <- trustworthy_subclonal_snvs[
+        !is.na(context), 
+        .N, 
+        keyby = .(context, sample)
+    ] %>% dcast(context ~ sample, value.var = "N")
+
+    startSpinner(session, message = "filling out mutation contexts")
+    all_contexts <- character()
+    for (mutation in c("[C>A]","[C>G]","[C>T]","[T>A]","[T>C]","[T>G]")){
+        for (left_context_base in c("A","C","G","T")){
+            for (right_context_base in c("A","C","G","T")){
+                all_contexts <- c(all_contexts, paste0(
+                    left_context_base, 
+                    mutation, 
+                    right_context_base
+                ))
+            }
+        }
+    }
+    mutation_counts <- merge(
+        data.table(context = all_contexts),
+        mutation_counts,
+        by = "context",
+        all.x = TRUE,
+        all.y = FALSE,
+        sort = FALSE
+    )
+
+    startSpinner(session, message = "summing sample counts")
+    sample_columns  <- names(mutation_counts)[  names(mutation_counts) !=     "context"]
+    treated_columns <- names(mutation_counts)[!(names(mutation_counts) %in% c("context", "smp_1"))]
+    mutation_counts[, all := apply(.SD, 1, sum, na.rm = TRUE), .SDcols = sample_columns]
+    mutation_counts[, tx  := apply(.SD, 1, sum, na.rm = TRUE), .SDcols = treated_columns]
+    mutation_counts[, ctl := smp_1]
+    mutation_counts <- mutation_counts[, .(context, ctl, tx, all)]
+
+    startSpinner(session, message = "parsing mutation matrix")
+    mutation_count_matrix <- as.matrix(mutation_counts[, -1, with = FALSE])
+    rownames(mutation_count_matrix) <- mutation_counts$context
+
+    startSpinner(session, message = "filling missing counts")
+    mutation_count_matrix[is.na(mutation_count_matrix)] <- 0
+
+    startSpinner(session, message = "fetching signatures")
+    cosmic_signatures <- MutationalPatterns::get_known_signatures(muttype = "snv")
+    rownames(cosmic_signatures) <- rownames(mutation_count_matrix)
+    cosmic_sigs <- c("SBS1", "SBS2", "SBS5", "SBS13", "SBS18")
+    cosmic_signatures <- cosmic_signatures[, cosmic_sigs]
+
+    neighbor_sigs <- fread(file.path(gitStatusData$suite$dir, "resources", "neighbor_sigs.csv"))
+    neighbor_signatures <- cbind(cosmic_signatures, as.matrix(neighbor_sigs[, -1, with = FALSE]))
+    colnames(neighbor_signatures) <- c(cosmic_sigs, names(neighbor_sigs)[-1])
+
+    list(
+        mutation_counts       = mutation_counts,
+        mutation_count_matrix = mutation_count_matrix,
+        cosmic_signatures     = cosmic_signatures,
+        neighbor_signatures   = neighbor_signatures
+    )
+})
+fit_to_signatures <- function(signatures){
+    sigFitShared <- req(sigFitShared())
+
+    startSpinner(session, message = paste("fitting", signatures))
+    signatures_fit <- MutationalPatterns::fit_to_signatures(
+        sigFitShared$mutation_count_matrix, 
+        sigFitShared[[signatures]]
+    )
+
+    relative_contributions <- prop.table(signatures_fit$contribution, margin = 2)
+    order <- order(-relative_contributions[,"all"])
+    print(relative_contributions[order,])
+
+    fit <- signatures_fit$reconstructed
+    mutation_fracs <- sigFitShared$mutation_counts[, .(
+        context = context,
+        ctl = round(ctl / sum(ctl, na.rm = TRUE), 5),
+        tx  = round(tx  / sum(tx,  na.rm = TRUE),  5),
+        all = round(all / sum(all, na.rm = TRUE), 5),
+        ctl_fit = round(fit[,"ctl"] / sum(fit[,"ctl"], na.rm = TRUE), 5),
+        tx_fit  = round(fit[,"tx"]  / sum(fit[,"tx"],  na.rm = TRUE), 5),
+        all_fit = round(fit[,"all"] / sum(fit[,"all"], na.rm = TRUE), 5)
+    )]
+    mutation_fracs[is.na(mutation_fracs)] <- 0
+    print(mutation_fracs)  
+
+    stopSpinner(session)
+    list(
+        shared = sigFitShared,
+        fit    = signatures_fit
+    )
+}
+sigFitWithoutNeighborPlot <- staticPlotBoxServer(
+    "sigFitWithoutNeighbor",
+    maxHeight = "600px",
+    create = function() {
+        fit <- fit_to_signatures("cosmic_signatures")
+        plot <- MutationalPatterns::plot_compare_profiles(
+            fit$shared$mutation_count_matrix[, "all"],
+            fit$fit$reconstructed[, "all"],
+            profile_names = c("Original", "Fitted"),
+            condensed = TRUE,
+            profile_ymax = 0.1
+        )
+        print(plot)
+    }
+)
+sigFitWithNeighborPlot <- staticPlotBoxServer(
+    "sigFitWithNeighbor",
+    maxHeight = "600px",
+    create = function() {
+        fit <- fit_to_signatures("neighbor_signatures")
+        plot <- MutationalPatterns::plot_compare_profiles(
+            fit$shared$mutation_count_matrix[, "all"],
+            fit$fit$reconstructed[, "all"],
+            profile_names = c("Original", "Fitted"),
+            condensed = TRUE,
+            profile_ymax = 0.1
+        )
+        print(plot)
+    }
+)
+
+#----------------------------------------------------------------------
 # define bookmarking actions
 #----------------------------------------------------------------------
 bookmarkObserver <- observe({
@@ -301,10 +442,12 @@ bookmarkObserver <- observe({
     # # updateSelectInput(session, "sampleSet-sampleSet", selected = bm$input[['sampleSet-sampleSet']])
     if(!is.null(bm$outcomes)) {
     #     # outcomes <<- listToReactiveValues(bm$outcomes)
-        # fragLengthPlot$settings$replace(bm$outcomes$fragLengthPlotSettings)
-        # fragCoveragePlot$settings$replace(bm$outcomes$fragCoveragePlotSettings)
-        # lengthVsCoveragePlot$settings$replace(bm$outcomes$lengthVsCoveragePlotSettings)
-        # vafPlot$settings$replace(bm$outcomes$vafPlotSettings)
+        fragLengthPlot$settings$replace(bm$outcomes$fragLengthPlotSettings)
+        fragCoveragePlot$settings$replace(bm$outcomes$fragCoveragePlotSettings)
+        lengthVsCoveragePlot$settings$replace(bm$outcomes$lengthVsCoveragePlotSettings)
+        vafPlot$settings$replace(bm$outcomes$vafPlotSettings)
+        sigFitWithoutNeighborPlot$settings$replace(bm$outcomes$sigFitWithoutNeighborPlotSettings)
+        sigFitWithNeighborPlot$settings$replace(bm$outcomes$sigFitWithNeighborPlotSettings)
     }
     bookmarkObserver$destroy()
 })
@@ -316,10 +459,12 @@ list(
     input = input,
     settings = settings$all_,
     outcomes = reactive({ list(
-        # fragLengthPlotSettings = fragLengthPlot$settings$all_(),
-        # fragCoveragePlotSettings = fragCoveragePlot$settings$all_(),
-        # lengthVsCoveragePlotSettings = lengthVsCoveragePlot$settings$all_(),
-        # vafPlotSettings = vafPlot$settings$all_()
+        fragLengthPlotSettings = fragLengthPlot$settings$all_(),
+        fragCoveragePlotSettings = fragCoveragePlot$settings$all_(),
+        lengthVsCoveragePlotSettings = lengthVsCoveragePlot$settings$all_(),
+        vafPlotSettings = vafPlot$settings$all_(),
+        sigFitWithoutNeighborPlotSettings = sigFitWithoutNeighborPlot$settings$all_(),
+        sigFitWithNeighborPlotSettings = sigFitWithNeighborPlot$settings$all_()
     ) }),
     settingsObject = settings,
     # junctions_filtered = junctions_filtered,

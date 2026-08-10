@@ -316,15 +316,18 @@ hf3_bgzColumns <- list(
     ),
     variantsBgz = c( # one entry per allowed clonal or subclonal variant
         chrom_index1     = "integer", # 1
-        tgt_pos0         = "integer", # 2
-        tgt_bases        = "character", # 3
-        alt_bases        = "character", # 4
-        is_indel         = "integer", # 5
-        start0           = "integer", # 2
+        ref_pos0         = "integer", # 2
+        tgt_pos0         = "integer",
+        tgt_bases        = "character", 
+        alt_bases        = "character", 
+        is_indel         = "integer",
+        start0           = "integer",
         end1             = "integer",
-        haplotype        = "integer", # 6
-        n_repeat_bases   = "integer", # 7
-        n_matching_reads = "integer", # 8
+        haplotype        = "integer", 
+        n_repeat_bases   = "integer",
+        context_base_left  = "character",
+        context_base_right = "character",
+        n_matching_reads = "integer",
         n_haplotype_reads = "integer",
         n_reads           = "integer",
         n_multivariant_reads = "integer",

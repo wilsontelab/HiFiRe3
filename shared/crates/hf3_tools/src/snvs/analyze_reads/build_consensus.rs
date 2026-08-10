@@ -251,8 +251,10 @@ impl SnvChromWorker {
             ':' => { // :[0-9]+   Identical sequence length
                 if self.var_tgt_pos0.is_some() { // commit any preceding variant stretch
                     if self.allowed {
+                        let ref_pos0 = self.var_tgt_pos0.unwrap();
                         let mut variant = Variant::new(
-                            self.var_tgt_pos0.unwrap(),
+                            ref_pos0,
+                            ref_pos0,
                             &self.tgt_bases,
                             &self.alt_bases,
                             re_fragment, haplotype

@@ -267,13 +267,15 @@ impl SnvChromWorker {
             ':' => {
                 if self.var_tgt_pos0.is_some() { // commit any preceding variant stretch
                     if self.allowed {
+                        let tgt_pos0 = self.var_tgt_pos0.unwrap();
                         let ref_pos0 = if tgt_is_hap {
-                            ref_pos0_map[self.var_tgt_pos0.unwrap() as usize]
+                            ref_pos0_map[tgt_pos0 as usize]
                         } else {
-                            self.var_tgt_pos0.unwrap()
+                            tgt_pos0
                         };
                         let variant = Variant::new(
                             ref_pos0,
+                            tgt_pos0,
                             &self.tgt_bases,
                             &self.alt_bases,
                             re_fragment, haplotype

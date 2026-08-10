@@ -13,7 +13,9 @@ use super::*;
 /// substitutions, insertions, deletions, and complex indels. 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Debug)]
 pub struct Variant {
-    // leftmost position when n_tgt_bases > 0, or the position preceding an insertion
+    // leftmost reference position when n_tgt_bases > 0, or the position preceding an insertion
+    pub ref_pos0: ChromPos0,
+    // the coordinate on target (either reference or haplotype) that matches ref_pos0
     pub tgt_pos0: SeqPos0,
     // for substitutions and deletions, the expected bases replaced by alt_bases         
     pub tgt_bases: Option<UppercaseACGTN>,
@@ -37,6 +39,7 @@ pub fn serialize_indel<S: Serializer>(
 impl Variant {
     /// Create a new Variant instance with the specified fields.
     pub fn new(
+        ref_pos0:    ChromPos0, 
         tgt_pos0:    SeqPos0, 
         tgt_bases:   &str,
         alt_bases:   &str,
@@ -44,6 +47,7 @@ impl Variant {
         haplotype:   Haplotype,
     ) -> Self {
         Variant {
+            ref_pos0,
             tgt_pos0,
             tgt_bases: if tgt_bases.is_empty() {
                 None 
@@ -96,7 +100,7 @@ impl Variant {
 /// subclonal variant as untrustworthy.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VariantLocation {
-    pub tgt_pos0:    SeqPos0,
+    pub ref_pos0:    SeqPos0,
     pub is_indel:    bool,
     pub re_fragment: ReFragment, // not haplotype here, we seek to compare across haplotypes
 }
