@@ -10,13 +10,12 @@
 // modules
 mod build_consensus;
 mod align_reads;
+pub mod poa;
 
 // imports
 use super::*;
-use align_reads::*;
 
 // constants
-const MIN_HAPLOTYPE_READS: u16 = 2;  // a haplotype must have >=2 matching reads to be called heterozygous
 const MM_F_NO_PRINT_2ND: [u64; 1] = [16384]; // minimap2 flag to suppress return of secondary alignments
 
 impl SnvChromWorker {
@@ -35,8 +34,8 @@ impl SnvChromWorker {
         self.var_tgt_pos0 = None;
         self.tgt_bases.clear();
         self.alt_bases.clear();
-        self.alt_qual.clear();
-        self.allowed      = true; 
+        self.min_qual = u8::MAX;
+        self.allowed = true; 
     }    
 
     /// Reset read haplotype voting.
@@ -51,6 +50,8 @@ impl SnvChromWorker {
         &mut self,
         tool: &SnvAnalysisTool,
         fragment_reads: FragmentReads,
+        re_fragments:   Vec<ReFragment>,
+        mut source_strands: SourceStrands,
         haplotype_consensuses: &mut HaplotypeConsensuses,
         reads_on_reference:    &mut FragmentHaplotypes,
         reads_on_haplotype:    &mut FragmentHaplotypes,
@@ -60,42 +61,44 @@ impl SnvChromWorker {
         let mut read_masks: Vec<Vec<DdMaskType>> = Vec::with_capacity(128); // expanded dd:Z: tags per read
         let mut ref_pos0_map1: Vec<ChromPos0> = Vec::with_capacity(MAX_EXPECTED_READ_LEN); // consensus to ref pos maps
         let mut ref_pos0_map2: Vec<ChromPos0> = Vec::with_capacity(MAX_EXPECTED_READ_LEN);
+        let mut str0_pos0_map: Vec<usize> = Vec::with_capacity(MAX_EXPECTED_READ_LEN); // haplotype to strand pos maps
+        let mut str1_pos0_map: Vec<usize> = Vec::with_capacity(MAX_EXPECTED_READ_LEN);
 
-        // process all observed putative ReFragments one at a time
-        for re_fragment in fragment_reads.instances.keys() {
-            // self.show_debug = *re_fragment == self.debug;
-            // if !self.show_debug { continue; }
-
-            // require a minimum ReFragment coverage to continue
+        // process all observed usable ReFragments one at a time
+        for re_fragment in re_fragments {
             let reads = fragment_reads.instances.get(&re_fragment).unwrap();
             let n_reads = reads.len();
-            if n_reads < self.min_fragment_reads { continue; }
+            // self.show_debug = re_fragment == self.debug;
+            // if !self.show_debug { continue; }
 
             // cache the RE fragment reference sequence for use below and during visualization
-            haplotype_consensuses.insert_reference(tool, self, re_fragment);
+            // re-orient all strand sequences to this forward strand reference
+            haplotype_consensuses.insert_reference(tool, self, &re_fragment);
 
-            // collect all variants over all fragment reads into a variant-by-read matrix
+            // collect all variants over all duplex fragment reads into a variant-by-read matrix
             self.reset_read_analysis(n_reads);
             ref_pos_maps.clear(); // maps start at the first aligned read base
             read_masks.clear();   // masks start at the first read base, even if clipped
             reads.iter().enumerate().for_each(|(read_i, read)|{
-                self.encoding.prepare_read_on_ref(re_fragment, read);
+                self.encoding.prepare_read_on_ref(&re_fragment, read);
                 ref_pos_maps.push(Vec::new());
                 read_masks.push(Self::get_dd_mask(read));
                 self.process_cs_tag(
-                    reads_on_reference, re_fragment, Haplotype::Unspecified, 
+                    reads_on_reference, &re_fragment, Haplotype::Unspecified, 
                     None, None, 
                     &mut ref_pos_maps[read_i],
-                    read_i, read, &read_masks[read_i]
+                    read_i, read, 
+                    &source_strands.by_read[&read.qname], 
+                    &str0_pos0_map, &str1_pos0_map
                 );
                 reads_on_reference.insert_encoding(
-                    re_fragment, 
+                    &re_fragment, 
                     Haplotype::Unspecified,
                     self.encoding.clone()
                 );
             });
 
-            // determine which reads could have reported each variant, i.e., were informative
+            // determine which duplex reads could have reported each variant, i.e., were informative
             for (variant, vmap) in &mut self.frag_vars.variant_map {
                 // only substitutions and insertions can be declared uninformative
                 // simple deletions had no read bases to report as N values
@@ -126,7 +129,7 @@ impl SnvChromWorker {
             }
 
             // remove homozyogous variants as they do not help parse haplotypes
-            // collect tracking variants, i.e., recurrent allowed SNVs or indels
+            // collect tracking variants, i.e., recurrent allowed duplex SNVs or indels
             let variants: Vec<Variant> = self.frag_vars.variant_map.keys().cloned().collect();
             let mut has_tracking_snp = false;
             for variant in variants {
@@ -150,17 +153,20 @@ impl SnvChromWorker {
                 // require a minimum read count to avoid false homozygosity
                 if n_reads < self.min_homozygous_reads { continue; }
                 let hap1_read_is: Vec<ReadIndex> = (0..n_reads).map(|i| i).collect();
-                let mm2_hap1 = self.build_haplotype_consensus(
-                    haplotype_consensuses, re_fragment, Haplotype::Homozygous, 
+                let opt1 = self.build_haplotype_consensus(
+                    haplotype_consensuses, 
+                    &re_fragment, Haplotype::Homozygous, 
                     &mut ref_pos0_map1, 
                     &reads, &hap1_read_is
                 );
-                let Some(mm2_hap1) = mm2_hap1 else { continue; };
+                let Some((hap1_seq, mm2_hap1)) = opt1 else { continue; };
                 self.align_to_haplotype_consensus(
-                    reads_on_haplotype, re_fragment, Haplotype::Homozygous,
+                    &mut source_strands, reads_on_haplotype, 
+                    &re_fragment, Haplotype::Homozygous,
                     &mut ref_pos0_map1, 
-                    reads, hap1_read_is, &read_masks,
-                    Some(mm2_hap1), None
+                    &mut str0_pos0_map, &mut str1_pos0_map,
+                    reads, hap1_read_is, 
+                    hap1_seq, mm2_hap1
                 );
                 continue;
             }
@@ -171,16 +177,6 @@ impl SnvChromWorker {
             if has_tracking_snp {
                 self.tracking_variants.retain(|variant| !variant.is_indel);
             }
-
-            // search for the variant to use as the index for defining haplotype consensuses
-            // prefer the variant with vaf nearest to 0.5
-            // let index_var = self.tracking_variants.iter()
-            //     .min_by_key(|&variant| {
-            //         let vmap =  &self.frag_vars.variant_map[variant];
-            //         vmap.zyg_int // smallest values are the closest to vaf==0.5
-            //     })
-            //     .unwrap();
-            // let index_vmap = &self.frag_vars.variant_map[&index_var];
 
             // find the most likely zygosity among the tracking variants by majority vote
             // when two zygosities are equally frequent, choose the vaf nearest to 0.5 (zyg_int closest to zero)
@@ -238,37 +234,33 @@ impl SnvChromWorker {
             }
 
             // build consensus sequences of each initial haplotype
-            let mm2_hap1 = self.build_haplotype_consensus(
-                haplotype_consensuses, re_fragment, Haplotype::Haplotype1, 
+            let opt1 = self.build_haplotype_consensus(
+                haplotype_consensuses, 
+                &re_fragment, Haplotype::Haplotype1, 
                 &mut ref_pos0_map1, 
                 &reads, &hap1_read_is
             );
-            let mm2_hap2 = self.build_haplotype_consensus(
-                haplotype_consensuses, re_fragment, Haplotype::Haplotype2, 
+            let opt2 = self.build_haplotype_consensus(
+                haplotype_consensuses, 
+                &re_fragment, Haplotype::Haplotype2, 
                 &mut ref_pos0_map2, 
                 &reads, &hap2_read_is
             );
-            let Some(mm2_hap1) = mm2_hap1 else { continue; };
-            let Some(mm2_hap2) = mm2_hap2 else { continue; };
+            let Some((hap1_seq, mm2_hap1)) = opt1 else { continue; };
+            let Some((hap2_seq, mm2_hap2)) = opt2 else { continue; };
 
             // assign all reads to their final haplotype by comparing 
             // read_on_ref variants to ref_on_hap variants
             hap1_read_is.clear();
             hap2_read_is.clear();
-            let mut hap1_assignments: Vec<ReadAssignment> = Vec::new();
-            let mut hap2_assignments: Vec<ReadAssignment> = Vec::new();
             (0..n_reads).for_each(|read_i| {
-                if let Some(assignment) = self.assign_read_to_haplotype(
-                    &reads[read_i], read_i, &mm2_hap1, &mm2_hap2
-                ){
-                    match assignment.haplotype {
+                if let Some(haplotype) = self.assign_read_to_haplotype(read_i){
+                    match haplotype {
                         Haplotype::Haplotype1 => {
                             hap1_read_is.push(read_i);
-                            hap1_assignments.push(assignment);
                         },
                         Haplotype::Haplotype2 =>  {
                             hap2_read_is.push(read_i);
-                            hap2_assignments.push(assignment);
                         },
                         _ => {}
                     }
@@ -278,18 +270,22 @@ impl SnvChromWorker {
             // align each read to its haplotype consensus to call subclonal variants
             if hap1_read_is.len() > 0 {
                 self.align_to_haplotype_consensus(
-                    reads_on_haplotype, re_fragment, Haplotype::Haplotype1,
+                    &mut source_strands, reads_on_haplotype, 
+                    &re_fragment, Haplotype::Haplotype1,
                     &mut ref_pos0_map1, 
-                    reads, hap1_read_is, &read_masks,
-                    None, Some(hap1_assignments)
+                    &mut str0_pos0_map, &mut str1_pos0_map,
+                    reads, hap1_read_is, 
+                    hap1_seq, mm2_hap1
                 );
             }
             if hap2_read_is.len() > 0 {
                 self.align_to_haplotype_consensus(
-                    reads_on_haplotype, re_fragment, Haplotype::Haplotype2,
+                    &mut source_strands, reads_on_haplotype, 
+                    &re_fragment, Haplotype::Haplotype2,
                     &mut ref_pos0_map2, 
-                    reads, hap2_read_is, &read_masks,
-                    None, Some(hap2_assignments)
+                    &mut str0_pos0_map, &mut str1_pos0_map,
+                    reads, hap2_read_is, 
+                    hap2_seq, mm2_hap2
                 );
             }
         }

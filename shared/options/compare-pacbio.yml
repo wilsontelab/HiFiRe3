@@ -1,0 +1,17 @@
+---
+# options that set the path to the input read files for haplotype analysis
+options:
+    hifi-bam-files: 
+        order: 1
+        short: H
+        type: string
+        required: true
+        default: null
+        description: "comma-delimited paths to sample PacBio BAM files with hifi reads called by-strand"
+    fail-bam-files: 
+        order: 2
+        short: F
+        type: string
+        required: true
+        default: null
+        description: "comma-delimited paths to sample PacBio BAM files with fail reads called by-strand"

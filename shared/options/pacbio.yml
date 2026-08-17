@@ -7,18 +7,11 @@ options:
         type: string
         required: true
         default: null
-        description: "path to a PacBioStrand BAM file with hifi reads generated in by-strand mode"
+        description: "path to a sample PacBio BAM file with hifi reads called by-strand"
     fail-bam-file: 
         order: 2
         short: F
         type: string
         required: true
         default: null
-        description: "path to a PacBioStrand BAM file with fail reads generated in by-strand mode"
-    force-basecalling: 
-        order: 3
-        short: X
-        type: boolean
-        required: false
-        default: false
-        description: "force basecalling of all reads, ignoring any existing ubam files"
+        description: "path to a sample PacBio BAM file with fail reads called by-strand"

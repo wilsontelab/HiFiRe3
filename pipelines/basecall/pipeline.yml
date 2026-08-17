@@ -12,6 +12,7 @@ actions:
     PacBio:
         order: 1
         optionFamilies:
+            - basecalling
             - pacbio
             - genome
         resources:

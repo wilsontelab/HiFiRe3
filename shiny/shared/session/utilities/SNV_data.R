@@ -123,6 +123,7 @@ hf3_getValidSubclonalSnvs <- function(sourceId){
         permanent = TRUE,
         from = "ram",
         create = hf3_cached_create2,
+        # create = "once",
         createFn = function(...) {
             startSpinner(session, message = "loading valid subclonal SNVs")
 
@@ -131,18 +132,18 @@ hf3_getValidSubclonalSnvs <- function(sourceId){
             subclonal_snvs <- variants[
                 is_snv == TRUE & 
                 clonal == 0 & # subclonal might have >1 valid read instance in one or more samples
-                max_avg_qual >= 30
-            ]  
+                max_min_qual >= 27 # binned qual levels are 3,10,17,22,27,35,40
+            ]
             subclonal_snvs[, n_valid_matching_reads := fcase(
                 haplotype == 3, n_matching_reads - n_multivariant_reads, # homozyogous fragments
                 default = n_matching_reads # heterozygous fragments, multivariant reads permitted
             )]  
 
-            message(paste(nrow(subclonal_snvs), " = number of high-quality subclonal SNVs"))
+            # message(paste(nrow(subclonal_snvs), " = number of high-quality subclonal SNVs"))
             print(subclonal_snvs[, .N, keyby = .(n_matching_reads)])
             print(subclonal_snvs[, .N, keyby = .(n_valid_matching_reads)])
-            print(subclonal_snvs[, .N, keyby = .(n_samples)])
-            print(subclonal_snvs[, .N, keyby = .(matches_clonal)])
+            # print(subclonal_snvs[, .N, keyby = .(n_samples)])
+            # print(subclonal_snvs[, .N, keyby = .(matches_clonal)])
 
             # reject homozygous multivariant to yield valid SNVs
             subclonal_snvs <- subclonal_snvs[n_valid_matching_reads > 0]
@@ -152,6 +153,47 @@ hf3_getValidSubclonalSnvs <- function(sourceId){
             print(subclonal_snvs[, .N, keyby = .(matches_clonal)])
 
             subclonal_snvs
+        }  
+    )$value
+}
+# similarly establish the list of 1-base indels
+hf3_getValidSubclonalIndels <- function(sourceId){
+    sessionCache$get(
+        "validSubclonalIndels", 
+        key = sourceId, 
+        permanent = TRUE,
+        from = "ram",
+        create = hf3_cached_create2,
+        # create = "once",
+        createFn = function(...) {
+            startSpinner(session, message = "loading valid subclonal indels")
+
+            # collect high-quality subclonal 1-base indels
+            variants <- hf3_getVariants_cached(sourceId)
+            subclonal_indels <- variants[
+                n_tgt_bases + n_alt_bases == 1 & 
+                clonal == 0 & # subclonal might have >1 valid read instance in one or more samples
+                max_min_qual >= 27 # binned qual levels are 3,10,17,22,27,35,40
+            ]  
+            subclonal_indels[, n_valid_matching_reads := fcase(
+                haplotype == 3, n_matching_reads - n_multivariant_reads, # homozyogous fragments
+                default = n_matching_reads # heterozygous fragments, multivariant reads permitted
+            )]  
+
+            # message(paste(nrow(subclonal_indels), " = number of high-quality subclonal 1-base indels"))
+            print(subclonal_indels[, .N, keyby = .(n_matching_reads)])
+            print(subclonal_indels[, .N, keyby = .(n_valid_matching_reads)])
+            # print(subclonal_indels[, .N, keyby = .(n_samples)])
+            # print(subclonal_indels[, .N, keyby = .(matches_clonal)])
+
+            # reject homozygous multivariant to yield valid SNVs
+            subclonal_indels <- subclonal_indels[n_valid_matching_reads > 0]
+
+            message(paste(nrow(subclonal_indels), " = number of valid subclonal 1-base indels"))
+            print(subclonal_indels[, .N, keyby = .(n_samples)])
+            print(subclonal_indels[, .N, keyby = .(matches_clonal)])
+
+            subclonal_indels
         }  
     )$value
 }
@@ -298,6 +340,20 @@ hf3_getTrustworthySubclonalSnvs <- function(sourceId, subclonal_snvs, haplotypes
         createFn = function(...) {
             startSpinner(session, message = "loading trustworthy SNVs")
 
+            # # report some statistics
+            # tmp <- merge(
+            #     haplotypes[, .SD, .SDcols = hf3_haplotype_cols],
+            #     subclonal_snvs[
+            #         matches_clonal == 0
+            #     ], 
+            #     by = hf3_haplotype_cols, 
+            #     all.x = FALSE, 
+            #     all.y = FALSE, 
+            #     sort = TRUE
+            # ) 
+            # print(tmp[, .N, keyby = .(n_valid_matching_reads)])
+            # print(tmp[, .N, keyby = .(n_samples)])
+
             # inner-join trustworthy haplotypes to valid SNVs to yield trustworthy SNVs
             subclonal_snvs <- merge(
                 haplotypes[, .SD, .SDcols = hf3_haplotype_cols],
@@ -313,6 +369,8 @@ hf3_getTrustworthySubclonalSnvs <- function(sourceId, subclonal_snvs, haplotypes
             subclonal_snvs[, sample := hf3_getSampleNames(sourceId, sample_bits, as_string = FALSE)]
 
             message(paste(nrow(subclonal_snvs), " = number of trustworthy single-sample subclonal SNVs"))
+            print(subclonal_snvs[, .N, keyby = .(n_valid_matching_reads)])
+            print(subclonal_snvs[n_matching_reads == 1, .(n_read_snvs = .N), by = .(qnames)][, .N, keyby = .(n_read_snvs)])
 
             # parse ref and alt bases into mutation types
             comp <- c("A" = "T", "C" = "G", "G" = "C", "T" = "A")
@@ -336,10 +394,10 @@ hf3_getTrustworthySubclonalSnvs <- function(sourceId, subclonal_snvs, haplotypes
                 )
             )]
 
-            print(
-                subclonal_snvs[, .N, keyby = .(tgt_bases, alt_bases)] %>% 
-                dcast(tgt_bases ~ alt_bases, value.var = "N")
-            )
+            # print(
+            #     subclonal_snvs[, .N, keyby = .(tgt_bases, alt_bases)] %>% 
+            #     dcast(tgt_bases ~ alt_bases, value.var = "N")
+            # )
             print(
                 subclonal_snvs[, .N, keyby = .(mutation, sample_bits)] %>% 
                 dcast(mutation ~ sample_bits, value.var = "N")
@@ -350,6 +408,87 @@ hf3_getTrustworthySubclonalSnvs <- function(sourceId, subclonal_snvs, haplotypes
             )
 
             subclonal_snvs
+        }  
+    )$value
+}
+# similarly get trustrworthy indels
+hf3_getTrustworthySubclonalIndels <- function(sourceId, subclonal_indels, haplotypes){
+    sessionCache$get(
+        "trustworthySubclonalIndels", 
+        key = sourceId, 
+        permanent = TRUE,
+        from = "ram",
+        create = hf3_cached_create2,
+        # create = "once",
+        createFn = function(...) {
+            startSpinner(session, message = "loading trustworthy indels")
+
+            # inner-join trustworthy haplotypes to valid indels to yield trustworthy indels
+            subclonal_indels <- merge(
+                haplotypes[, .SD, .SDcols = hf3_haplotype_cols],
+                subclonal_indels[
+                    n_samples == 1 & 
+                    matches_clonal == 0
+                ], 
+                by = hf3_haplotype_cols, 
+                all.x = FALSE, 
+                all.y = FALSE, 
+                sort = TRUE
+            )
+            subclonal_indels[, sample := hf3_getSampleNames(sourceId, sample_bits, as_string = FALSE)]
+
+            message(paste(nrow(subclonal_indels), " = number of trustworthy single-sample subclonal 1-base indels"))
+
+            # parse ref and alt bases into mutation types
+            comp <- c("A" = "T", "C" = "G", "G" = "C", "T" = "A")
+            subclonal_indels[, mutation := fcase(
+                n_tgt_bases == 1, paste0("-", fcase( # 1-base deletion
+                    tgt_bases %in% c("C", "T"),      tgt_bases,
+                    tgt_bases %in% c("A", "G"), comp[tgt_bases]
+                )),
+                default = paste0("+", fcase( # 1-base insertion
+                    alt_bases %in% c("C", "T"),      alt_bases,
+                    alt_bases %in% c("A", "G"), comp[alt_bases]
+                ))
+            )]
+            subclonal_indels[, context := fcase(
+                is.na(context_base_left),       NA_character_,
+                grepl("N", context_base_left),  NA_character_,
+                grepl("N", context_base_right), NA_character_,
+                default = fcase(
+                    n_tgt_bases == 1, fcase(
+                        tgt_bases %in% c("C", "T"), paste0(
+                            context_base_left,      
+                            "[", mutation, "]",
+                            context_base_right
+                        ),
+                        tgt_bases %in% c("A", "G"), paste0(
+                            comp[context_base_right],
+                            "[", mutation, "]",
+                            comp[context_base_left]
+                        )                        
+                    ),
+                    default = fcase(
+                        alt_bases %in% c("C", "T"), paste0(
+                            context_base_left,      
+                            "[", mutation, "]",
+                            context_base_right
+                        ),
+                        alt_bases %in% c("A", "G"), paste0(
+                            comp[context_base_right],
+                            "[", mutation, "]",
+                            comp[context_base_left]
+                        )                        
+                    )
+                )
+            )]
+
+            print(
+                subclonal_indels[!is.na(context), .N, keyby = .(mutation, context, sample_bits)] %>% 
+                dcast(mutation + context ~ sample_bits, value.var = "N")
+            )
+
+            subclonal_indels
         }  
     )$value
 }

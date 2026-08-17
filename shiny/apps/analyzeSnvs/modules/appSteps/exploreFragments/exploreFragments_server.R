@@ -549,7 +549,7 @@ variantsTableData <- reactive({
             clonal = clonal,
             matches_clonal = matches_clonal,
             vaf = round(vaf, 3),
-            qual = max_avg_qual,
+            qual = max_min_qual,
             qnames = qnames
         )
     ]

@@ -76,7 +76,7 @@ impl Variant {
     pub fn to_string(
         &self, 
         tgt_start0: SeqPos0, 
-        avg_qual:   PhredQual
+        min_qual:   PhredQual
     ) -> String {
         let tgt_bases = self.tgt_bases
             .as_deref()
@@ -89,7 +89,7 @@ impl Variant {
             tgt_start0 + self.tgt_pos0,
             tgt_bases,
             alt_bases,
-            avg_qual
+            min_qual
         )
     }
 }

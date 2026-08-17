@@ -37,7 +37,7 @@ impl VariantReadInstance {
             re_fragment:  *re_fragment,
             haplotype:    *haplotype,
             sample_bit:   read.sample_bit,
-            n_bases:      read.qual_bytes.len() as u32,
+            n_bases:      read.seq_bytes.len() as u32,
             n_haplotype_reads:  0,
             n_reads:      0,
             n_variants:   0,
@@ -121,7 +121,7 @@ impl VariantReadsTally {
         re_fragment: &ReFragment,
         haplotype:   &Haplotype,
         variant:     &Variant, // allowed subclonal variants only
-        avg_qual:    PhredQual,
+        min_qual:    PhredQual,
         n_haplotype_reads: usize,
         n_reads:           usize,
     ){
@@ -131,7 +131,7 @@ impl VariantReadsTally {
         instance.n_haplotype_reads = n_haplotype_reads as u16;
         instance.n_reads           = n_reads as u16;
         instance.n_variants += 1;
-        if avg_qual < MIN_SNV_INDEL_QUAL {
+        if min_qual < MIN_SNV_INDEL_QUAL {
             instance.n_low_qual += 1;
         }
         if variant.tgt_bases.is_none() {
@@ -157,7 +157,7 @@ impl VariantReadsTally {
         } 
         instance.variants.push(variant.to_string(
             re_fragment.start0, 
-            avg_qual
+            min_qual
         ));
     }
 

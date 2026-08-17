@@ -97,15 +97,40 @@ summarizeLibrariesUI <- function(id, options) {
         ),
         fluidRow(
             staticPlotBoxUI(
-                ns("sigFitWithoutNeighbor"),
-                "Signature Fit Without Neighbor Mutations",
+                ns("cosmicAllVsFittedPlot"),
+                "All vs. Fitted",
+                width = 6, 
+                collapsible = TRUE, 
+                collapsed = TRUE
+            ),
+            staticPlotBoxUI(
+                ns("cosmicCtlVsFittedPlot"),
+                "Control vs. Fitted",
+                width = 6, 
+                collapsible = TRUE, 
+                collapsed = TRUE
+            )
+        ),
+        fluidRow(
+            staticPlotBoxUI(
+                ns("cosmicTxVsFittedPlot"),
+                "Treated vs. Fitted",
+                width = 6, 
+                collapsible = TRUE, 
+                collapsed = TRUE
+            )
+        ),
+        fluidRow(
+            staticPlotBoxUI(
+                ns("snvCtlVsTxPlot"),
+                "Control vs. Treated, SNVs",
                 width = 6, 
                 collapsible = TRUE, 
                 collapsed = FALSE
             ),
             staticPlotBoxUI(
-                ns("sigFitWithNeighbor"),
-                "Signature Fit With Neighbor Mutations",
+                ns("indelCtlVsTxPlot"),
+                "Control vs. Treated, 1-base indels",
                 width = 6, 
                 collapsible = TRUE, 
                 collapsed = FALSE

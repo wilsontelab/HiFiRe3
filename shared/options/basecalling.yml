@@ -1,0 +1,10 @@
+---
+# options that set the path to the input PacBio strand-specific files for final basecalling
+options:
+    force-basecalling: 
+        order: 3
+        short: X
+        type: boolean
+        required: false
+        default: false
+        description: "force basecalling of all reads, ignoring any existing ubam files"

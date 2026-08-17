@@ -35,6 +35,7 @@ actions:
             - targets
             - SNV
             - compare
+            - compare-pacbio
         resources:
             required:
                 total-ram: 24G

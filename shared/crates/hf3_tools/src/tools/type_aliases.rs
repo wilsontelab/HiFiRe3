@@ -42,6 +42,8 @@ pub type UppercaseACGTN = String;
 // pub type MixedcaseACGTN = String;
 /// A single valid UTF-8 character byte expected to be either A, C, G, T, or N.
 pub type BaseByteACGTN = u8;
+/// A single valid UTF-8 character byte expected to be either A, C, G, or T only.
+pub type BaseByteACGT = u8;
 
 /// A PHRED-scaled probability that a called base is wrong without any offsets, 
 /// hence the value can be used directly without subtracting 33.

@@ -29,6 +29,7 @@ pub_key_constants!(
 pub fn merge_strand_pairs(
     rx_strand_pair:  Receiver<StrandPair>,
     tx_kinetics:     Sender<KineticsInstance>,
+    tx_corr_to_ref:  Sender<String>,
     tx_merge_result: Sender<MergeResult>,
     minimap2:        &Minimap2<Built>,
     fa:              &IndexedFasta,
@@ -67,7 +68,7 @@ pub fn merge_strand_pairs(
 
                 // merge the two strands into a single read
                 let (seq, qual, dt_tag, dd_tag, sk_tag) = 
-                    strand_merger.merge_strands(&strand_pair, &tx_kinetics);
+                    strand_merger.merge_strands(&strand_pair, &tx_kinetics, &tx_corr_to_ref);
 
                 // transmit the merged read with the two-strand tag set
                 tx_merge_result.send(MergeResult {

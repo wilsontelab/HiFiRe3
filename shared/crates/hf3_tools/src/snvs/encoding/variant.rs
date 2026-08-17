@@ -29,7 +29,7 @@ pub struct VariantInstances {
     n_haplotype_reads: u16,
     n_reads:           u16,
     sample_bits:       SampleBits,
-    max_avg_qual:      PhredQual,
+    max_min_qual:      PhredQual,
     clonal:    Clonality,
     qnames:    Vec<QName>,
 }
@@ -42,7 +42,7 @@ impl VariantInstances {
             n_haplotype_reads: 0,
             n_reads:           0,
             sample_bits:       0,
-            max_avg_qual:      0,
+            max_min_qual:      0,
             clonal:    Clonality::Subclonal,
             qnames:    Vec::new(), // auto-allocate since many variants will have few reads
         }
@@ -94,7 +94,7 @@ struct VariantRecord<'a> {
     #[serde(serialize_with = "serialize_clonality")]
     clonal:           Clonality,
     matches_clonal:   u8,
-    max_avg_qual:     PhredQual, // max_avg_qual set on subclonal
+    max_min_qual:     PhredQual, // max_min_qual set on subclonal
     qnames: CommaDelimited, // comma-delimited list of QNAMEs with this variant
 }
 
@@ -149,7 +149,7 @@ impl VariantsTally {
         reads:   &[ReadInstance], // all ReFragment reads
         read_is: &[ReadIndex],    // read indices for the haplotype being processed
         read_js: &[ReadIndex],    // indices into read_is for reads with the variant
-        max_avg_qual: PhredQual,
+        max_min_qual: PhredQual,
     ) {
         let instances = self.tally
             .entry(variant.clone())
@@ -157,7 +157,7 @@ impl VariantsTally {
         instances.n_matching_reads  += read_js.len() as u16;
         instances.n_haplotype_reads += read_is.len() as u16;
         instances.n_reads           += reads.len() as u16;
-        instances.max_avg_qual = instances.max_avg_qual.max(max_avg_qual);
+        instances.max_min_qual = instances.max_min_qual.max(max_min_qual);
         instances.clonal       = Clonality::Subclonal;
         for read_j in read_js {
             let read = &reads[read_is[*read_j]];
@@ -240,7 +240,7 @@ impl VariantsTally {
                         re_fragment: variant.re_fragment, // on either haplotype
                     }) as u8
                 },
-                max_avg_qual:  instances.max_avg_qual,
+                max_min_qual:  instances.max_min_qual,
                 qnames:   instances.qnames.join(",")
             };
             csv.serialize(&record);

@@ -2,7 +2,6 @@
 
 // imports
 use std::iter::repeat_n;
-use rustc_hash::FxHashMap;
 use minimap2::{Aligner as Minimap2, Built};
 use crate::snvs::*;
 use super::*;
@@ -22,7 +21,7 @@ impl SnvChromWorker {
         ref_pos0_map: &mut Vec<ChromPos0>,
         reads:        &[ReadInstance],
         read_is:      &[ReadIndex],
-    ) -> Option<Minimap2<Built>> {
+    ) -> Option<(String, Minimap2<Built>)> {
 
         // select the read to use as the index during consensus assembly
         // prefer the one with the highest initial reference alignment score
@@ -119,11 +118,11 @@ impl SnvChromWorker {
         // cache the haplotype consensus for printing
         haplotype_consensuses.insert(
             re_fragment, haplotype, 
-            consensus, Some(hap_vs_ref)
+            consensus.clone(), Some(hap_vs_ref)
         );
 
         // return the built minimap2 for subsequent read alignment
-        Some(mm2_hap)
+        Some((consensus, mm2_hap))
     }
 
     /// Parse a cs tag from one read aligned to an index read during haplotype
@@ -185,7 +184,8 @@ impl SnvChromWorker {
         }
     }
 
-    /// Parse a cs tag from the reference sequence on the haplotype consensus.
+    /// Parse a cs tag from a reference sequence aligned to the haplotype 
+    /// consensus.
     fn process_cs_ref_on_hap(
         &mut self,
         ref_pos0_map: &mut Vec<ChromPos0>,
@@ -338,4 +338,80 @@ impl SnvChromWorker {
             _ => panic!("Unexpected CS tag operation: {}", self.cs_op),
         }
     }
+
+    // /// Use unambiguous haplotype reads to build a haplotype consensus sequence.
+    // /// Like all of the contributing reads, the returned consensus always has 
+    // /// the same endpoints as the host ReFragment.
+    // /// 
+    // /// This function is called with two or more input reads, but never one.
+    // /// 
+    // /// The consensus is built from original PacBio --by-strand strand consensuses.
+    // pub(super) fn build_haplotype_consensus_poa(
+    //     &mut self,
+    //     source_strands: &SourceStrands,
+    //     haplotype_consensuses: &mut HaplotypeConsensuses,
+    //     re_fragment:  &ReFragment,
+    //     haplotype:    Haplotype,
+    //     ref_pos0_map: &mut Vec<ChromPos0>,
+    //     reads:        &[ReadInstance],
+    //     read_is:      &[ReadIndex],
+    // ) -> Option<(Vec<u8>, Minimap2<Built>)> {
+
+    //     // get the reference sequence of the fragment on the top strand
+    //     let (ref_seq, _) = haplotype_consensuses.get(re_fragment, Haplotype::Unspecified);
+
+    //     // use partial order alignment on original strand sequences to establish
+    //     // the haplotype consensus
+    //     let mut strands: Vec<&[u8]> = Vec::with_capacity(read_is.len() * 2);
+    //     for read_i in read_is {
+    //         let qname = &reads[*read_i].qname;
+    //         if let Some(seqs) = source_strands.by_read.get(qname){
+    //             if !seqs.1.is_empty() {
+    //                 strands.push(&seqs.0);
+    //                 strands.push(&seqs.1);                    
+    //             }
+    //         }   
+    //     }
+    //     if strands.len() < 4 { return None; }
+    //     let haplotype_consensus = consensus(&strands, 0, &self.poa_config)
+    //         .expect("failed to generate POA consensus");
+
+    //     // align the fragment reference span to the haplotype consensus, i.e., ref_on_hap
+    //     let mm2_hap = self.minimap2.clone()
+    //         .with_seq(&haplotype_consensus.sequence)
+    //         .expect("Failed to initialize minimap2 in build_haplotype_consensus()");
+    //     let ref_on_haps = &mm2_hap.map(
+    //         ref_seq.as_bytes(), 
+    //         true, 
+    //         false, 
+    //         None, 
+    //         Some(&MM_F_NO_PRINT_2ND), 
+    //         None
+    //     ).expect("Minimap2 failed at ref_on_hap");
+    //     if ref_on_haps.len() == 0 { return None; }
+    //     let ref_on_hap = &ref_on_haps[0];
+    //     let Some(aln) = &ref_on_hap.alignment else { return None; };
+    //     let Some(cs) = &aln.cs else { return None; }; // never expected to fail
+
+    //     // create a map of reference positions per each haplotype consensus position
+    //     // and a hap_vs_ref encoding to retain a memory of clonal variants relative to reference
+    //     ref_pos0_map.clear();
+    //     self.hap_vs_ref.clear();
+    //     let hap_vs_ref = self.process_cs_ref_on_hap(
+    //         ref_pos0_map, re_fragment, haplotype, 
+    //         ref_on_hap.target_start, ref_on_hap.target_end, ref_on_hap.query_start, 
+    //         haplotype_consensus.sequence.len(), cs, 
+    //         reads, read_is,
+    //     );
+
+    //     // cache the haplotype consensus for printing
+    //     haplotype_consensuses.insert(
+    //         re_fragment, haplotype, 
+    //         unsafe { from_utf8_unchecked(&haplotype_consensus.sequence).to_string() }, 
+    //         Some(hap_vs_ref)
+    //     );
+
+    //     // return the built minimap2 for subsequent read alignment
+    //     Some((haplotype_consensus.sequence, mm2_hap))
+    // }
 }

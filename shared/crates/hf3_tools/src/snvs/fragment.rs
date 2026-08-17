@@ -48,8 +48,7 @@ pub struct ReadInstance {
     pub qname:      QName,
     pub is_reverse: bool,
     pub aln_score:  u32,
-    pub seq_bytes:  Vec<BaseByteACGTN>,
-    pub qual_bytes: Vec<PhredQual>,
+    pub seq_bytes:  Vec<BaseByteACGTN>, // needed to find informative duplex bases
     pub cs: String, // as created by minimap2 during alignment
     pub dd: String, // as created by hf3_tools pre-alignment
     pub qry_pos0:   SeqPos0,   // where cs aln starts on SEQ, i.e., AFTER re-orientation to ref top strand
@@ -65,9 +64,8 @@ impl ReadInstance {
             is_reverse: aln.is_reverse(),
             aln_score:  bam_tags::get_tag_u32_default(aln, ALN_SCORE, 0), 
 
-            // SAM SEQ and QUAL are reference top-strand oriented
+            // SAM SEQ is reference top-strand oriented
             seq_bytes:  aln.seq().as_bytes(), 
-            qual_bytes: aln.qual().to_vec(),
 
             // minimap2 cs tag is reference top-strand oriented
             cs: bam_tags::get_tag_str(aln, DIFFERENCE_STRING),  
@@ -116,8 +114,7 @@ impl FragmentReads {
 pub struct ReadMapEntry {
     has_var: bool, // immutable record of whether a read reported a specific variant
     pub is_informative: bool, // false if the variant had N bases or bases error-corrected to reference
-    // pub hap0: bool, // mutable haplotype initally == `has_var`, but may be flipped
-    pub avg_qual: PhredQual,
+    pub min_qual: PhredQual,
 }
 impl ReadMapEntry{
     /// Create a new empty ReadMapEntry.
@@ -125,8 +122,7 @@ impl ReadMapEntry{
         Self { 
             has_var: false, 
             is_informative: true,
-            // hap0: false,
-            avg_qual: 0 
+            min_qual: 0 
         }
     }
     /// Get the immutable `has_var` value of a ReadMapEntry.
@@ -187,7 +183,7 @@ impl FragmentVariants {
         &mut self, 
         variant:  Variant,
         read_i:   ReadIndex,
-        avg_qual: PhredQual,
+        min_qual: PhredQual,
     ) {
         let vmap = self.variant_map
             .entry(variant.clone())
@@ -196,7 +192,7 @@ impl FragmentVariants {
         vmap.read_map[read_i] = ReadMapEntry{
             has_var:        true,
             is_informative: true,
-            avg_qual,
+            min_qual,
         };
     }
 }

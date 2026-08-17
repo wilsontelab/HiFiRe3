@@ -13,7 +13,7 @@ use faimm::IndexedFasta;
 use mdi::pub_key_constants;
 use genomex::sequence::{rc_acgt_str, rc_acgtn_str, Aligner};
 use crate::tools::basecall_pacbio::channel_kinetics::kinetics;
-use crate::snvs::tags::*;
+use crate::snvs::dd_tag::*;
 use super::{StrandPair, KineticsInstance, MAX_READ_LEN};
 
 // constants
@@ -270,6 +270,7 @@ impl StrandMerger {
         &mut self,
         strand_pair: &StrandPair,
         tx_kinetics: &Sender<KineticsInstance>,
+        tx_corr_to_ref: &Sender<String>,
     ) -> (String, Vec<u8>, u8, String, Vec<u16>) {
 
         // initialize merger state
@@ -455,10 +456,12 @@ impl StrandMerger {
                         if this_is_ref {
                             seq.push_str(this_base);
                             qual.push(strand_pair.this.qual[this_offset]);
+                            let _ = tx_corr_to_ref.send(format!("this ref {} alt {}", this_base, prev_bases));
                             HETERODUP_SUBS_THIS_REF
                         } else if prev_is_ref {
                             seq.push_str(prev_bases);
                             qual.push(self.prev_qual[self.prev_offset]);
+                            let _ = tx_corr_to_ref.send(format!("prev ref {} alt {}", prev_bases, this_base));
                             HETERODUP_SUBS_PREV_REF
                         } else {
                             seq.push(SEQ_MASKED_BASE);

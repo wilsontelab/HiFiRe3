@@ -94,6 +94,8 @@ pub_key_constants!(
     UNUSABLE_READ
     UNMAPPED_READ
     ORPHAN_STRAND
+    // correction to reference types
+    CORRECTED_TO_REFERENCE
 );
 const CHANNEL_CAPACITY: usize = 16; // channel buffer size
 const MIN_READ_LEN: usize = 250;   // TODO: expose read length limits as options?
@@ -121,6 +123,10 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         (FAIL_BY_OUTCOME,    "number of reads with both strands from fail.bam by strand merging outcome"),
         (HIFI_BY_OUTCOME,    "number of reads with both strands from hifi.bam by strand merging outcome"),
         (BOTH_BY_OUTCOME,    "number of reads with one strand from each bam file by strand merging outcome"),
+    ]);
+    let mut ctrs2 = Counters::new(TOOL, &[]);
+    ctrs2.add_keyed_counters(&[
+        (CORRECTED_TO_REFERENCE, "number of bases corrected to reference by strand base pattern"),
     ]);
 
     // instantiate shared minimap2 aligner
@@ -152,6 +158,8 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         = bounded::<StrandPair>(CHANNEL_CAPACITY);
     let (tx_kinetics, rx_kinetics) 
         = bounded::<KineticsInstance>(CHANNEL_CAPACITY);
+    let (tx_corr_to_ref, rx_corr_to_ref) 
+        = bounded::<String>(CHANNEL_CAPACITY);
     let (tx_merge_result, rx_merge_result) 
         = bounded::<MergeResult>(CHANNEL_CAPACITY);
 
@@ -172,13 +180,15 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         let n_cpu = *cfg.get_usize(N_CPU);
         let n_workers: usize = n_cpu.max(4) - 3;// reserve one thread for reader, kinetics, and output
         for _ in 0..n_workers {
-            let rx_strand_pair  = rx_strand_pair.clone();
+            let rx_strand_pair = rx_strand_pair.clone();
             let tx_kinetics = tx_kinetics.clone();
-            let tx_merge_result  = tx_merge_result.clone();
+            let tx_corr_to_ref = tx_corr_to_ref.clone();
+            let tx_merge_result = tx_merge_result.clone();
             scope.spawn(|_| {
                 channel_worker::merge_strand_pairs(
                     rx_strand_pair, 
                     tx_kinetics,
+                    tx_corr_to_ref,
                     tx_merge_result,
                     &minimap2,
                     &fa,
@@ -186,6 +196,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
             });
         }
         drop(tx_kinetics);
+        drop(tx_corr_to_ref);
         drop(tx_merge_result); 
 
         // kinetics side-effect receiver channel
@@ -193,6 +204,13 @@ pub fn main() -> Result<(), Box<dyn Error>> {
             channel_kinetics::collect_kinetics(
                 rx_kinetics
             ).unwrap();
+        });
+
+        // corrected to reference receiver channel
+        scope.spawn(|_| {
+            for base_pattern in rx_corr_to_ref {
+                ctrs2.increment_keyed(CORRECTED_TO_REFERENCE, &base_pattern);
+            }
         });
 
         // process merge results as they arrive in the main thread
@@ -262,6 +280,9 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         &[FAIL_BY_OUTCOME],
         &[HIFI_BY_OUTCOME],
         &[BOTH_BY_OUTCOME],
+    ]);
+    ctrs2.print_grouped(&[
+        &[CORRECTED_TO_REFERENCE],
     ]);
     Ok(())
 }

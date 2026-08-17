@@ -3,18 +3,21 @@
 
 // modules 
 pub mod fragment;
-pub mod tags;
+pub mod dd_tag;
+pub mod cs_tag;
 pub mod simple_repeat;
 pub mod variant;
+pub mod strand_data;
 pub mod analyze_reads;
 pub mod haplotype;
 pub mod encoding;
 
 // re-exports
 pub use fragment::*;
-pub use tags::*;
+pub use dd_tag::*;
 pub use simple_repeat::*;
 pub use variant::*;
+pub use strand_data::*;
 pub use haplotype::*;
 pub use encoding::*;
 
@@ -27,6 +30,7 @@ use serde::Serialize;
 use mdi::pub_key_constants;
 use mdi::workflow::Config;
 use genomex::genome::{TargetRegions, Exclusions};
+use crate::snvs::analyze_reads::poa::*;
 use crate::tools::type_aliases::*;
 
 // constants
@@ -35,6 +39,7 @@ pub_key_constants!(
     SEQUENCING_PLATFORM
     LIBRARY_TYPE
 );
+pub const MIN_HAPLOTYPE_READS: u16 = 2;  // a haplotype must have >=2 matching reads to be called heterozygous
 pub const MIN_SNV_INDEL_QUAL: u8 = 27;
 pub const MAX_EXPECTED_READ_LEN:  usize = 10000; // use for allocating recycled objects
 
@@ -82,7 +87,8 @@ pub struct SnvChromWorker{
     pub min_homozygous_reads: usize,
 
     // processing tools
-    pub minimap2: Minimap2<PresetSet>,
+    pub poa:            Poa,
+    pub minimap2:       Minimap2<PresetSet>,
     pub frag_vars:      FragmentVariants,
     pub encoding:       AlignmentEncoding,  // read encoding for visualization
     pub tracking_variants: Vec<Variant>, // potentially heterozygous variants
@@ -91,10 +97,11 @@ pub struct SnvChromWorker{
     pub hap_vs_ref:     Vec<String>, // consensus encoding for visualization
     pub hap_vars:       FxHashMap<Haplotype, FxHashSet<Variant>>,
     pub hap_votes:      FxHashMap<Haplotype, usize>,
+    pub str_matches:    Vec<bool>,
     pub var_tgt_pos0:   Option<SeqPos0>, 
     pub tgt_bases:      UppercaseACGTN,
     pub alt_bases:      UppercaseACGTN,
-    pub alt_qual:       Vec<PhredQual>,
+    pub min_qual:       u8,
     pub allowed:        bool,
     pub cs_op:          char,
     pub op_val:         String,

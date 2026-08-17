@@ -51,6 +51,7 @@ actions:
         optionFamilies:
             - targets
             - SNV
+            - pacbio
         resources:
             required:
                 total-ram: 12G
