@@ -652,6 +652,10 @@ container image from:
 e.g., using command (update vX.X to an actual version, e.g., v0.5):
 - `singularity pull oras://ghcr.io/wilsontelab/hifire3:vX.X`
 
+New containers are only built at major and minor version releases,
+not patch releases, so container-only execution is restricted
+to vX.X.0 and cannot access patches vX.X.1, etc.
+
 ### Use the container with directory bind mounts and direct action calls
 
 As always, you must bind mount all relevant server paths to 
