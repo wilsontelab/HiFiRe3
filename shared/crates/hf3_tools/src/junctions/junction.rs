@@ -2,6 +2,7 @@
 
 // dependencies
 use std::mem::take;
+use genomex::sam::junction::JunctionType;
 use rustc_hash::FxHashMap;
 use rust_htslib::bam::record::Record as BamRecord;
 use rayon::prelude::*;
@@ -291,18 +292,18 @@ pub struct FinalJunction {
     pub ref_pos1_2:      u32,
     pub strand_index0_2:     u8,
     pub offset:  i16,    // most frequent junction offset in a fuzzy-matched group
-    jxn_seq:     String, // most frequent junction bases among instances with the best junction offset
+    pub jxn_seq:     String, // most frequent junction bases among instances with the best junction offset
     /* ------------------------------------------- */
     // junction properties that derive deterministically from nodes
     pub jxn_type: u8,
     strands:      u8,
-    sv_size:      u32,
+    pub sv_size:      u32,
     /* ------------------------------------------- */
     // values maintained as lists of values per junction instance
     /* ------------------------------------------- */
     // values expanded and updated from read_data (ReadLevelMetadata); includes all instances, even duplicates
     pub qnames:        String, // comma-delimited of read QNAMEs that sequenced this junction; may have duplicates if a read had multiple identical junctions
-    insert_sizes:  String, // comma-delimited insert sizes of qnames
+    pub insert_sizes:  String, // comma-delimited insert sizes of qnames
     outer_node1s:  String, // comma-delimited outer node1 values of qnames
     outer_node2s:  String, // comma-delimited outer node2 values of qnames
     channels:      String, // comma-delimited ONT channel numbers of qnames; 0 if not applicable
@@ -335,13 +336,13 @@ pub struct FinalJunction {
     has_multi_instance_read: u8,  // integer bool; true if any QNAME had multiple instances of this junction
     has_duplex_read:         u8,  // integer bool; true if any read with this junction had duplex basecalling performed
     is_bidirectional:        u8,  // integer bool; true if junction instances were observed in both orientations
-    jxn_failure_flag:        u8,  // bitwise OR of all instance jxn_failure_flags
-    aln_failure_flag:        u8,  // bitwise OR of all instance aln_failure_flags
+    pub jxn_failure_flag:        u8,  // bitwise OR of all instance jxn_failure_flags
+    pub aln_failure_flag:        u8,  // bitwise OR of all instance aln_failure_flags
     pub any_was_chimeric:    u8,  // integer bool; true if any jxn_failure_flag had a chimeric bit set
-    any_was_not_chimeric:    u8,  // integer bool; true if any jxn_failure_flag did not have a chimeric bit set
-    min_stem_length:         u32, // best stem length over all instances; thus, whether any instance was a high-quality detection
+    pub any_was_not_chimeric:    u8,  // integer bool; true if any jxn_failure_flag did not have a chimeric bit set
+    pub min_stem_length:         u32, // best stem length over all instances; thus, whether any instance was a high-quality detection
     pub max_min_mapq:            u8,  // best min_mapq over all instances
-    min_max_divergence:      f32, // best max_divergence over all instances
+    pub min_max_divergence:      f32, // best max_divergence over all instances
     /* ------------------------------------------- */
     // additional junction properties that derive deterministically from nodes
     pub is_intergenomic: u8,     // integer bool; true if the junction connects different genomes of a composite reference
@@ -671,5 +672,148 @@ impl FinalJunction {
         if self.n_instances_dedup == 1 { "singleton" } 
          else if self.n_instances == 2 { "two instances" }
                                   else { ">=3 instances" }
+    }
+
+    /// Get the median insert size
+    pub fn get_median_insert_size(&self) -> u32 {
+        let mut insert_sizes: Vec<_> = self.insert_sizes
+            .split(',')
+            .map(str::trim)
+            .filter(|&s| !s.is_empty())
+            .filter_map(|s| {
+                if let Ok(num) = s.parse::<i32>() {
+                    Some(num.unsigned_abs()) // drop the sign, which reflects size selection filtering
+                } else {
+                    eprintln!("bad insert size: {}", s);
+                    None
+                }
+            })
+            .collect();
+        if insert_sizes.len() == 0 { return 0 }
+        insert_sizes.sort_unstable();
+        let n = insert_sizes.len();
+        if n % 2 == 0 {
+            ((insert_sizes[n / 2 - 1] as f64 + insert_sizes[n / 2] as f64) / 2.0) as u32
+        } else {
+            insert_sizes[n / 2]
+        }
+    }  
+
+    /// Convert strand indices to "+-", "-+", "++", "--".
+    pub fn get_strand_encoding(&self) -> String {
+        let strand1 = match self.strand_index0_1 {
+            0 => "+",
+            _ => "-", // thus, as would be used in paired end reads
+        };
+        let strand2 = match self.strand_index0_2 {
+            0 => "-",
+            _ => "+",
+        };
+        format!("{}{}", strand1, strand2)
+    } 
+
+    /// Adjust previously extracted HiFiRe3 junction metadata to 
+    /// Sniffles-compatible VCF encoding. 
+    /// 
+    /// Resulting corrected positions and `sv_size` were empirically determined
+    /// to adjust most HiFiRe3 junctions to Sniffles VCF coordinates and are
+    /// consistent with the behavior of Sniffles in working from the last
+    /// retained, i.e., aligned, bases, which is broadly similar to HiFiRe3, 
+    /// except that HiFiRe3 performs complete junction characterization.
+    /// 
+    /// CuteSV POS, SVLEN and END encoding are NOT the same. See 
+    pub fn adjust_to_vcf(
+        &self,
+        chrom_1: &mut String,
+        pos1_1:  &mut u32,
+        chrom_2: &mut String,
+        pos1_2:  &mut u32,
+        strands: &mut String, // as +- (DEL), -+ (DUP), ++ (INVF), -- (INVR)
+    ) -> u32 {
+        // HiFiRe3 and VCF both sort same-chrom junctions by position
+        // but breakpoint assignments differ.       
+        let sv_size: u32;
+        match self.jxn_type {
+            // DEL (+-)
+            x if x == JunctionType::Deletion as u8 => {
+                // -----MMM-----
+                // -----MMM~~~~~~~MMM-----
+                // H      1       2
+                // S      1      2        H=HiFiRe3, S=Sniffles, empirically derived
+                // -----|-----
+                // -----~~~~~~~-----
+                // H   1       2
+                // S   1      2
+                *pos1_2 -= 1;
+                sv_size = *pos1_2 - *pos1_1; // thus does not count microhomology bases in the deletion
+            },
+            // DUP (-+)
+            x if x == JunctionType::Duplication as u8 => {
+                // -----MMM~~~~~~MMM~~~~~~MMM-----
+                // -----MMM~~~~~~MMM-----
+                // H    1          2
+                // S   1           2
+                // -----~~~~~~~|~~~~~~~-----
+                // -----~~~~~~~-----
+                // H    1     2
+                // S   1      2
+                *pos1_1 -= 1;
+                sv_size = *pos1_2 - *pos1_1;
+            },
+            // INV-F (++)
+            x if x == JunctionType::Inversion as u8 && self.strand_index0_1 == 0 => {
+                // -----MMM7654321
+                // -----MMM1234567mmm-----
+                // H      1         2
+                // S      1         2     
+                // -----7654321
+                // -----1234567-----
+                // H   1      2
+                // S   1      2
+                sv_size = *pos1_2 - *pos1_1;
+            },
+            // INV-R (--)
+            x if x == JunctionType::Inversion as u8 && self.strand_index0_1 == 1 => {
+                //         7654321MMM-----
+                // -----mmm1234567MMM-----
+                // H    1         2
+                // V   1         2
+                //      7654321-----
+                // -----1234567-----
+                // H    1      2
+                // V   1      2
+                *pos1_2 += 1;
+                sv_size = *pos1_2 - *pos1_1;
+            },
+            // TRANS - orient junctions using lexical-sorted chroms
+            _ => {
+                // TODO: adjust positions for microhomologies
+                if chrom_1 > chrom_2 {
+                    (*chrom_1, *pos1_1, *chrom_2, *pos1_2) = 
+                    (chrom_2.clone(), pos1_2.clone(), chrom_1.clone(), pos1_1.clone());
+                    *strands = match strands.as_str() {
+                        "-+" => "+-".to_string(),
+                        "+-" => "-+".to_string(),
+                        _ => strands.clone() // INV types do not invert, they are the same regardless of node order
+                    }
+                }
+                sv_size = 999_999_999;
+            },
+        } 
+        sv_size
+    }
+
+    /// Adjust previously extracted HiFiRe3 junction metadata to CuteSV-compatible 
+    /// VCF encoding. This is necessary for fuzzy matching of DEL events where
+    /// HiFiRe3 and Sniffles2 `pos1_2` differ significantly from CuteSV.
+    pub fn adjust_pos1_2_to_cutesv (
+        &self,
+        pos1_2: u32,
+    ) -> u32 {  
+        if self.jxn_type == JunctionType::Deletion as u8 {
+            (pos1_2 as i32 - self.offset as i32) as u32
+        } else {
+            pos1_2
+        }
     }
 }

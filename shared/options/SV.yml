@@ -1,14 +1,14 @@
 ---
 # options that determine the behavior of SV finding algorithms
 options:
-    min_n_observed:
+    min-n-observed:
         order: 1
         short: null
         type: integer
         required: false
         default: 1
         description: "only report SVs with at least this many independent reads supporting them"
-    min_sv_mapq:
+    min-sv-mapq:
         order: 2
         short: null
         type: integer

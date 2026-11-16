@@ -1,0 +1,102 @@
+##fileformat=VCFv4.2
+##source=Sniffles2_2.8.1
+
+##contig=<ID=chr1,length=248956422>
+...
+##contig=<ID=chr16_KI270728v1_random,length=1872759>
+
+##ALT=<ID=INS,Description="Insertion">
+##ALT=<ID=DEL,Description="Deletion">
+##ALT=<ID=DUP,Description="Duplication">
+##ALT=<ID=INV,Description="Inversion">
+##ALT=<ID=BND,Description="Breakend; Translocation">
+
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype quality">
+##FORMAT=<ID=DR,Number=1,Type=Integer,Description="Number of reference reads">
+##FORMAT=<ID=DV,Number=1,Type=Integer,Description="Number of variant reads">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase-block, zero if none or not phased">
+##FORMAT=<ID=ID,Number=1,Type=String,Description="Individual sample SV ID for multi-sample output">
+
+##FILTER=<ID=PASS,Description="All filters passed">
+##FILTER=<ID=GT,Description="Genotype filter">
+##FILTER=<ID=SUPPORT_MIN,Description="Minimum read support filter">
+##FILTER=<ID=STDEV_POS,Description="SV Breakpoint standard deviation filter">
+##FILTER=<ID=STDEV_LEN,Description="SV length standard deviation filter">
+##FILTER=<ID=COV_MIN,Description="Minimum coverage filter">
+##FILTER=<ID=COV_MIN_GT,Description="Minimum coverage filter (missing genotype)">
+##FILTER=<ID=COV_CHANGE_DEL,Description="Coverage change filter for DEL">
+##FILTER=<ID=COV_CHANGE_DUP,Description="Coverage change filter for DUP">
+##FILTER=<ID=COV_CHANGE_INS,Description="Coverage change filter for INS">
+##FILTER=<ID=COV_CHANGE_FRAC_US,Description="Coverage fractional change filter: upstream-start">
+##FILTER=<ID=COV_CHANGE_FRAC_SC,Description="Coverage fractional change filter: start-center">
+##FILTER=<ID=COV_CHANGE_FRAC_CE,Description="Coverage fractional change filter: center-end">
+##FILTER=<ID=COV_CHANGE_FRAC_ED,Description="Coverage fractional change filter: end-downstream">
+##FILTER=<ID=COV_VAR,Description="Coverage variance exceeded">
+##FILTER=<ID=MOSAIC_VAF,Description="Mosaic variant allele fraction filter">
+##FILTER=<ID=NOT_MOSAIC_VAF,Description="Variant allele fraction filter for non-mosaic">
+##FILTER=<ID=ALN_NM,Description="Length adjusted mismatch filter">
+##FILTER=<ID=STRAND_BND,Description="Strand support filter for BNDs">
+##FILTER=<ID=STRAND,Description="Strand support filter for germline SVs">
+##FILTER=<ID=STRAND_MOSAIC,Description="Strand support filter for mosaic SVs">
+##FILTER=<ID=SVLEN_MIN,Description="SV length filter">
+##FILTER=<ID=SVLEN_MIN_MOSAIC,Description="SV length filter for mosaic SVs (min)">
+##FILTER=<ID=SVLEN_MAX_MOSAIC,Description="SV length filter for mosaic SVs (max)">
+##FILTER=<ID=SINGLE_BREAK,Description="A single break point was detected but not classified as an SV.">
+##FILTER=<ID=INLINE_SA,Description="INLINE/CIGAR-based SV is mostly supported by SA reads">
+##FILTER=<ID=MOSAIC_SV_CLOSE_EDGE,Description="For mosaic SVs, the location is close to the end of the read (either end)">
+##FILTER=<ID=GT_FAILED,Description="Sniffles was unable to genotype this call.">
+##FILTER=<ID=UNRESOLVED,Description="Call is within an unresolved region.">
+
+##INFO=<ID=PRECISE,Number=0,Type=Flag,Description="Structural variation with precise breakpoints">
+##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Structural variation with imprecise breakpoints">
+##INFO=<ID=MOSAIC,Number=0,Type=Flag,Description="Structural variation classified as putative mosaic">
+##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Length of structural variation">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variation">
+##INFO=<ID=CHR2,Number=1,Type=String,Description="Mate chromsome for BND SVs">
+##INFO=<ID=SUPPORT,Number=1,Type=Integer,Description="Number of reads supporting the structural variation">
+##INFO=<ID=SUPPORT_INLINE,Number=1,Type=Integer,Description="Number of reads supporting an INS/DEL SV (non-split events only), or reads for a DUP SV reported as INS by the mapper.">
+##INFO=<ID=SUPPORT_SA,Number=1,Type=Integer,Description="Number of reads supporting a DEL SV through supplementary alignments (split events)">
+##INFO=<ID=SUPPORT_LONG,Number=1,Type=Integer,Description="Number of soft-clipped reads putatively supporting the long insertion SV">
+##INFO=<ID=SUPPORT_UNSCALED,Number=1,Type=Float,Description="Base support for long insertions, before adjustment">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of structural variation">
+##INFO=<ID=STDEV_POS,Number=1,Type=Float,Description="Standard deviation of structural variation start position">
+##INFO=<ID=STDEV_LEN,Number=1,Type=Float,Description="Standard deviation of structural variation length">
+##INFO=<ID=COVERAGE,Number=.,Type=Float,Description="Coverages near upstream, start, center, end, downstream of structural variation">
+##INFO=<ID=STRAND,Number=1,Type=String,Description="Strands of supporting reads for structural variant">
+##INFO=<ID=AC,Number=.,Type=Integer,Description="Allele count, summed up over all samples">
+##INFO=<ID=SUPP_VEC,Number=1,Type=String,Description="List of read support for all samples">
+##INFO=<ID=CONSENSUS_SUPPORT,Number=1,Type=Integer,Description="Number of reads that support the generated insertion (INS) consensus sequence">
+##INFO=<ID=RNAMES,Number=.,Type=String,Description="Names of supporting reads (if enabled with --output-rnames)">
+##INFO=<ID=VAF,Number=1,Type=Float,Description="Variant Allele Fraction">
+##INFO=<ID=COVERAGE_VAR,Number=1,Type=Float,Description="Variance of coverage across large events">
+##INFO=<ID=NM,Number=.,Type=Float,Description="Mean number of query alignment length adjusted mismatches of supporting reads">
+##INFO=<ID=PHASE,Number=.,Type=String,Description="Phasing information derived from supporting reads, represented as list of: HAPLOTYPE,PHASESET,HAPLOTYPE_SUPPORT,PHASESET_SUPPORT,HAPLOTYPE_FILTER,PHASESET_FILTER">
+##INFO=<ID=LASM,Number=0,Type=Flag,Description="Local assembly used to detect the structural variant">
+
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  SAMPLE
+
+****DELETION****
+chr1    2707    Sniffles2.DEL.53DS0     TCTgca...ccg      T       60      PASS    PRECISE;SVTYPE=DEL;SVLEN=-259;END=2966;SUPPORT=4;RNAMES=m64049_210425_091619/25821819/ccs,m64018_210503_204922/153747606/ccs,m64049_210424_024840/112986691/ccs,m64018_210505_030429/14092581/ccs;COVERAGE=5,5,16,21,22;STRAND=+-;NM=0.027;PHASE=0,NULL,4,4,PASS,FAIL;STDEV_LEN=0.000;STDEV_POS=0.000;SUPPORT_SA=0;VAF=0.286        GT:GQ:DR:DV:PS  0/1:12:10:4:.
+
+****INSERTION****
+chr1    2566    Sniffles2.INS.0S0       c       cCCTCACCCTCACCCTCACCCTCACCCTGACCCTGACCCTGACCCTCACCCTGACCCTCACCCTCACCCTCA        60      PASS    IMPRECISE;SVTYPE=INS;SVLEN=71;END=2566;SUPPORT=3;RNAMES=m64018_210505_030429/14092581/ccs,m64018_210503_204922/153747606/ccs,...;COVERAGE=5,5,5,5,22;STRAND=+-;NM=0.026;PHASE=0,NULL,3,3,PASS,FAIL;STDEV_LEN=5.033;STDEV_POS=54.271;SUPPORT_LONG=0;SUPPORT_UNSCALED=3;VAF=0.600      GT:GQ:DR:DV:PS  0/1:11:2:3:.
+
+****DUPLICATION****
+chr1    3009031 Sniffles2.DUP.B92S0     G       <DUP>   60      PASS    IMPRECISE;SVTYPE=DUP;SVLEN=1394;END=3010425;SUPPORT=20;RNAMES=m64109_200807_075817/122487993/ccs,m64049_210425_091619/157156687/ccs,m64018_210505_030429/147261366/ccs,m64049_210424_024840/14484519/ccs,m64049_210424_024840/28770683/ccs,m64049_210424_024840/145623701/ccs,m64018_210505_030429/49219233/ccs;COVERAGE=71,87,85,85,70;STRAND=+-;NM=0.008;PHASE=0,NULL,7,7,PASS,FAIL;STDEV_LEN=17.964;STDEV_POS=14.789;SUPPORT_INLINE=13;VAF=0.286 GT:GQ:DR:DV:PS  0/1:60:50:20:.
+
+****INVERSION****
+Sniffles2 reports inversion SVs, not JUNCTIONS
+chr1    16396440        Sniffles2.INV.BBBS0     C       <INV>   59      PASS    PRECISE;SVTYPE=INV;SVLEN=128772785;END=145169225;SUPPORT=57;RNAMES=m64109_200805_204709/125502700/ccs,m64018_210503_204922/24182989/ccs,...;COVERAGE=75,137,66,76,138;STRAND=+;NM=0.019;PHASE=0,NULL,57,57,PASS,FAIL;STDEV_LEN=0.000;STDEV_POS=0.000;VAF=0.425    GT:GQ:DR:DV:PS    0/1:60:77:57:.
+
+chr1    26638140        Sniffles2.INV.E9FS0     N       <INV>   60      PASS    PRECISE;SVTYPE=INV;SVLEN=12027;END=26650167;
+
+chr1    26641622        Sniffles2.INV.EA0S0     N       <INV>   60      PASS    PRECISE;SVTYPE=INV;SVLEN=4809;END=26646431;
+
+chr1    93876138        Sniffles2.INV.EA8S0     N       <INV>   42      PASS    IMPRECISE;SVTYPE=INV;SVLEN=6643;END=93882781;
+chr1    143203950       Sniffles2.INV.EBDS0     N       <INV>   45      PASS    PRECISE;SVTYPE=INV;SVLEN=997;END=143204947;
+chr1    143203950       Sniffles2.INV.EBES0     N       <INV>   41      PASS    IMPRECISE;SVTYPE=INV;SVLEN=2034;END=143205984;
+
+****BREAKEND****
+chr1    16396441        Sniffles2.BND.BDCS0     C       [chr1:145169227[C       59      PASS    PRECISE;SVTYPE=BND;SUPPORT=60;RNAMES=m64109_200805_204709/125502700/ccs,m64018_210503_204922/24182989/ccs,...;COVERAGE=75,75,138,140,143;STRAND=+-;NM=606.417;CHR2=chr1;PHASE=0,NULL,60,60,PASS,FAIL;STDEV_POS=0.000;VAF=0.508       GT:GQ:DR:DV:PS  0/1:60:58:60:.
+

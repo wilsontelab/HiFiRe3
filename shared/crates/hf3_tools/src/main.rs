@@ -11,6 +11,7 @@ mod junctions;
 mod snvs;
 mod sites;
 mod tools;
+mod benchmark;
 
 // constants
 const TOOLS_NAME: &str = "hf3_tools";
@@ -82,6 +83,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         ------------------------------------------------------------- */
         // fuzzy merge final junctions across related sample of different library types
         "merge_svs" => tools::merge_svs::main(),
+
+        /*--------------------------------------------------------------
+        benchmark SVs
+        ------------------------------------------------------------- */
+        // digest allelic consensus sequences to determine RE fragment sizes
+        "digest_sv_alleles" => tools::digest_sv_alleles::main(),
+        
+        // run SV benchmark comparison
+        "compare_sv_calls" => tools::compare_sv_calls::main(),
 
         /*--------------------------------------------------------------
         unrecognized pipeline action tool

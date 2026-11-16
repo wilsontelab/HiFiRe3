@@ -21,6 +21,10 @@ pub mod split_bam_by_chrom_sv; // create temporary chrom-level BAM files
 pub mod analyze_svs;           // analyze chrom-level BAM files then aggregate SV data
 pub mod merge_svs;             // combine final junctions files across different library types
 
+// structural variant benchmarking
+pub mod digest_sv_alleles;     // digest allelic consensus sequences to determine RE fragment sizes
+pub mod compare_sv_calls;      // run SV benchmark comparison
+
 // single-nucleotide variant/indel analysis
 pub mod split_bam_by_chrom_snv; // create temporary chrom-level BAM files for SNV/indel analysis
 pub mod analyze_snvs;           // analyze RE fragment haplotypes for clonal and subclonal variants

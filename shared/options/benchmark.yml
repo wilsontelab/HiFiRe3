@@ -1,0 +1,24 @@
+---
+# options that determine the behavior of benchmarking algorithms
+options:
+    min-sv-len:
+        order: 1
+        short: null
+        type: integer
+        required: false
+        default: 100
+        description: "only report SVs of at least this length (INV have special handling)"
+    min-n-observed:
+        order: 2
+        short: null
+        type: integer
+        required: false
+        default: 3
+        description: "only report SVs with this many supporting reads"
+    restriction-enzymes: 
+        order: 3
+        short: null
+        type: string
+        required: true
+        default: null
+        description: "comma-delimited set of restriction enzymes to annotate as <name>:<site>,..." 

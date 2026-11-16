@@ -39,6 +39,7 @@ mod alignment;
 mod grouping;
 mod deduplication;
 mod samples;
+mod vcf;
 
 // re-exports
 pub use flag::*;

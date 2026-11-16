@@ -1,0 +1,59 @@
+##fileformat=VCFv4.2
+##source=cuteSV-2.1.4
+
+##contig=<ID=chr1,length=248956422>
+...
+##contig=<ID=chrEBV,length=171823>
+
+##ALT=<ID=INS,Description="Insertion of novel sequence relative to the reference">
+##ALT=<ID=DEL,Description="Deletion relative to the reference">
+##ALT=<ID=DUP,Description="Region of elevated copy number relative to the reference">
+##ALT=<ID=INV,Description="Inversion of reference sequence">
+##ALT=<ID=BND,Description="Breakend of translocation">
+
+##INFO=<ID=PRECISE,Number=0,Type=Flag,Description="Precise structural variant">
+##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variant">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=CHR2,Number=1,Type=String,Description="Chromosome for END coordinate in case of a translocation">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant described in this record">
+##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">
+##INFO=<ID=CILEN,Number=2,Type=Integer,Description="Confidence interval around inserted/deleted material between breakends">
+##INFO=<ID=RE,Number=1,Type=Integer,Description="Number of read support this record">
+##INFO=<ID=STRAND,Number=A,Type=String,Description="Strand orientation of the adjacency in BEDPE format (DEL:+-, DUP:-+, INV:++/--)">
+##INFO=<ID=RNAMES,Number=.,Type=String,Description="Supporting read names of SVs (comma separated)">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency.">
+
+##FILTER=<ID=q5,Description="Quality below 5">
+
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=DR,Number=1,Type=Integer,Description="# High-quality reference reads">
+##FORMAT=<ID=DV,Number=1,Type=Integer,Description="# High-quality variant reads">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="# Phred-scaled genotype likelihoods rounded to the closest integer">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="# Genotype quality">
+
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  NULL
+
+****DELETION****
+chr1    10342   cuteSV.DEL.0    accctaaccctaccctaaccctaaccctaaccctaaccctaaccctaacccctaacccctaaccctaaccct        a       0.1     q5      IMPRECISE;SVTYPE=DEL;SVLEN=-71;END=10413;CIPOS=-30,30;CILEN=-1,1;RE=7;AF=0.2121;STRAND=+-      GT:DR:DV:PL:GQ  0/0:26:7:0,18,181:17
+
+****INSERTION****
+chr1    10419   cuteSV.INS.0    t       tCTAACCCTCTAACCCTCTAACCCTAACCCTAACCC    219.5   PASS    PRECISE;SVTYPE=INS;SVLEN=35;END=10419;CIPOS=-31,31;CILEN=-7,7;RE=23;AF=1.0     GT:DR:DV:PL:GQ  1/1:0:23:219,59,0:58
+
+****DUPLICATION****
+chr1    1382324 cuteSV.DUP.0    C       <DUP>   0.0     q5      IMPRECISE;SVTYPE=DUP;SVLEN=582;END=1382906;RE=10;STRAND=-+;AF=0.1282    GT:DR:DV:PL:GQ 0/0:68:10:0,104,553:103
+
+****INVERSION****
+CuteSV reports inversion JUNCTIONS, not SVs
+chr1    26638141        cuteSV.INV.0    T       <INV>   0.0     q5      IMPRECISE;SVTYPE=INV;SVLEN=12027;END=26650168;RE=10;STRAND=--;AF=0.1316 GT:DR:DV:PL:GQ  0/0:66:10:0,99,534:98
+
+chr1    26641622        cuteSV.INV.1    c       <INV>   95.9    PASS    PRECISE;SVTYPE=INV;SVLEN=4809;END=26646431;RE=17;STRAND=++;AF=0.6538    GT:DR:DV:PL:GQ  0/1:9:17:96,0,20:19
+chr1    26641623        cuteSV.INV.2    g       <INV>   53.2    PASS    PRECISE;SVTYPE=INV;SVLEN=4809;END=26646432;RE=12;STRAND=--;AF=0.5       GT:DR:DV:PL:GQ  0/1:12:12:53,0,53:50
+
+chr1    30405666        cuteSV.INV.3    A       <INV>   0.4     q5      IMPRECISE;SVTYPE=INV;SVLEN=306;END=30405972;RE=15;STRAND=--;AF=0.25     GT:DR:DV:PL:GQ  0/0:45:15:0,10,287:10
+
+chr1    43593625        cuteSV.INV.4    G       <INV>   782.5   PASS    PRECISE;SVTYPE=INV;SVLEN=590;END=43594215;RE=82;STRAND=++;AF=1.0        GT:DR:DV:PL:GQ  1/1:0:82:782,209,0:209
+chr1    43593642        cuteSV.INV.5    A       <INV>   725.2   PASS    PRECISE;SVTYPE=INV;SVLEN=623;END=43594265;RE=76;STRAND=--;AF=1.0        GT:DR:DV:PL:GQ  1/1:0:76:725,194,0:194
+
+****BREAKEND****
+chr1    34961   cuteSV.BND.0    A       A[chr20:60001[  0.0     q5      IMPRECISE;SVTYPE=BND;RE=11;AF=0.2075    GT:DR:DV:PL:GQ  0/0:42:11:0,30,296:30

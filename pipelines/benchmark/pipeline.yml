@@ -1,0 +1,73 @@
+---
+pipeline:
+    name: benchmark
+    description: "Compare variants to an external truth set and algorithm to assess pipeline performance"
+    version: v0.0.1
+actions:
+    _global:
+        environment: hf3Main
+        condaFamilies:
+            - base
+            - main
+        optionFamilies:
+            - library-properties
+            - genome
+    align:
+        order: 1
+        optionFamilies:
+            - read-file
+            - alignment
+        resources:
+            required:
+                total-ram: 16G
+            recommended: 
+                n-cpu: 16
+                ram-per-cpu: 4G
+        job-manager:
+            recommended:
+                time-limit: 12:00:00
+        description: "align long reads using HF3-style parameters to a sorted BAM with seqs"
+    call_svs:
+        order: 2
+        optionFamilies:
+            - SV
+            - benchmark
+        resources:
+            required:
+                total-ram: 16G
+            recommended: 
+                n-cpu: 16
+                ram-per-cpu: 4G
+        job-manager:
+            recommended:
+                time-limit: 4:00:00
+        description: "run Sniffles2 and CuteSV on a benchmark::align BAM; annotate RE fragments"
+    compare_svs:
+        order: 4
+        optionFamilies:
+            - restriction-enzyme
+            - targets
+            - SV
+            - benchmark-compare
+        resources:
+            required:
+                total-ram: 16G
+            recommended: 
+                n-cpu: 8
+                ram-per-cpu: 4G
+        job-manager:
+            recommended:
+                time-limit: 4:00:00
+        description: "compare junctions called by HiFiRe3 to Sniffles2 and CuteSV"
+# package:
+#     SVs: # the pipeline action after which a data package should assembled
+#         uploadType: hf3AnalyzeSVs # a signal to the Stage 2 framework regarding the package contents
+#         files:
+#             samplesFile:
+#                 type: txt
+#                 file: $SV_SAMPLES_FILE
+# container:
+#     supported: false    # set to true if you maintain a container registry for this pipeline [false]
+#     registry:  ghcr.io  # domain name of your OCI-compatible, oras-accessible, container registry [ghcr.io]
+#     owner:     wilsontelab # REQUIRED: the name of the owner, e.g., user or organization, at 'registry'
+#     installer: apt-get  # the installer program used by the container OS, typically apt-get or yum [apt-get]

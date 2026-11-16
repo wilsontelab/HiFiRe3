@@ -43,8 +43,8 @@ pub_key_constants!(
     MIN_AVG_BASE_QUAL
     MIN_N_PASSES
     NAME_BAM_FILES // harvested upstream from the input directories
-    HIFI_BAM_FILES // set by user to the same files as for `basecall PacBio`
-    FAIL_BAM_FILES
+    HIFI_BAM_FILE  // set by user to the same files as for `basecall PacBio`
+    FAIL_BAM_FILE  // for compare_svs, HIFI_BAM_FILE and FAIL_BAM_FILE are comma-delimited lists
     INDEX_FILE_PREFIX_WRK
     SNV_SAMPLES_FILE
     // counter keys
@@ -76,7 +76,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     cfg.set_u8_env(&[MIN_AVG_BASE_QUAL]);
     cfg.set_f64_env(&[MIN_N_PASSES]);
     cfg.set_string_env(&[
-        NAME_BAM_FILES, HIFI_BAM_FILES, FAIL_BAM_FILES,
+        NAME_BAM_FILES, HIFI_BAM_FILE, FAIL_BAM_FILE,
         INDEX_FILE_PREFIX_WRK, SNV_SAMPLES_FILE
     ]);
     let min_avg_base_qual = *cfg.get_u8(MIN_AVG_BASE_QUAL);
@@ -183,10 +183,10 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     // for all kept duplex reads for use in final error correction
     w.log.print("streaming by-strand BAM records");
     print_strand_reads(
-        &w.cfg, HIFI_BAM_FILES, &tpool, &qname_to_chrom, &mut strand_writers
+        &w.cfg, HIFI_BAM_FILE, &tpool, &qname_to_chrom, &mut strand_writers
     )?;
     print_strand_reads(
-        &w.cfg, FAIL_BAM_FILES, &tpool, &qname_to_chrom, &mut strand_writers
+        &w.cfg, FAIL_BAM_FILE, &tpool, &qname_to_chrom, &mut strand_writers
     )?;
 
     // report counter values
@@ -282,9 +282,11 @@ fn print_strand_reads(
     strand_writers: &mut FxHashMap<u32, Writer>,
 ) -> Result<(), Box<dyn Error>> {
     let bam_files = cfg.get_string(bam_files);
+    if bam_files == "NA" { return Ok(()) } // make FAIL_BAM_FILE optional
     let bam_paths = bam_files.split(',').collect::<Vec<&str>>();
     let mut aln = BamRecord::new();
     for bam_path in bam_paths {
+        if bam_path == "NA" { continue }
         let bam_file_name = bam_path.split('/').last().unwrap();
         eprintln!("    {}", bam_file_name);
         let mut bam = Reader::from_path(bam_path)?;

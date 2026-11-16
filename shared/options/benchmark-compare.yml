@@ -1,0 +1,38 @@
+---
+# options that determine the behavior of benchmarking algorithms
+options:
+    min-sv-len:
+        order: 1
+        short: null
+        type: integer
+        required: false
+        default: 100
+        description: "only report SVs of at least this length (INV have special handling)"
+    match-distance:
+        order: 2
+        short: null
+        type: integer
+        required: false
+        default: 50
+        description: "junction breakpoints within this bp distance as grouped as one SV"
+    truthset-dir: 
+        order: 3
+        short: null
+        type: string
+        required: true
+        default: null
+        description: "directory containing truth-set VCFs with INFO/FRAGSIZES" 
+    truthset-is-composite-genome:
+        order: 4
+        short: null
+        type: boolean
+        required: false
+        default: false
+        description: "truthset genome is a composite of >1 reference e.g., with cross-species spike-in"
+    primary-genome-exclusions:
+        order: 5
+        short: null
+        type: string
+        required: true
+        default: null
+        description: "BED file of excluded regions for the primary genome shared by test and truth sets"

@@ -1,6 +1,6 @@
 //! Merge the two strands of PacBioStrand CCS reads into a single sequence.
 // input:
-//     "fail" and "hifi" CCS reads as FAIL_BAM_FILE, HIFI_BAM_FILE
+//     "fail" (optional) and "hifi" CCS reads as FAIL_BAM_FILE, HIFI_BAM_FILE
 //      called with the by-strand option, and optionally with kinetics tags
 // output:
 //     READ_BAM_FILE, with:

@@ -12,6 +12,6 @@ options:
         order: 2
         short: F
         type: string
-        required: true
-        default: null
-        description: "path to a sample PacBio BAM file with fail reads called by-strand"
+        required: false
+        default: NA
+        description: "optional path to a sample PacBio BAM file with fail reads called by-strand"

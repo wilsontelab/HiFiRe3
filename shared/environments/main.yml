@@ -17,3 +17,8 @@ dependencies:
 
   # for orthogonal validation of chimeras
     # - blast=2.17
+
+  # SV benchmarkging
+    - python=3
+    - sniffles=2.8
+    - cutesv=2.1

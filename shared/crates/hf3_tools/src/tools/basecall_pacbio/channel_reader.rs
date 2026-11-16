@@ -100,6 +100,7 @@ pub fn stream_bam_files(
     for bam_file_key in &[FAIL_BAM_FILE, HIFI_BAM_FILE] {
     // for bam_file_key in &[HIFI_BAM_FILE] {
         let bam_file = cfg.get_string(bam_file_key);
+        if bam_file == "NA" { continue } // make FAIL_BAM_FILE optional
         let bam_file_name = Path::new(&bam_file).file_name().unwrap().to_str().unwrap();
         eprintln!("processing {}", bam_file_name);
         let mut bam = Reader::from_path(&bam_file)?;
